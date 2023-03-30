@@ -22,6 +22,7 @@ jobs:
       shell: cmd
       run: |
         chcp 65001
+        MSBuild -p:Configuration="Release" -p:Platform=x64 -p:PlatformToolset=v143
         MSBuild -p:Configuration="Release (lite)" -p:Platform=x64 -p:PlatformToolset=v143
       
     - name: Get current time
