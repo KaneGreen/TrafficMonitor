@@ -1,6 +1,6 @@
 ### Fork 版本说明
 本分支只构建 x64 Lite 版本。  
-[GitHub Actions](https://github.com/KaneGreen/TrafficMonitor/actions?query=workflow:"Release+CI")
+[GitHub Actions](https://github.com/KaneGreen/TrafficMonitor/actions?query=workflow:"BuildLite")
 
 
 以下内容为原始版本的 README
