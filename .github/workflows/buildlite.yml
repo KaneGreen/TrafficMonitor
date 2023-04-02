@@ -1,4 +1,4 @@
-name: Release CI
+name: BuildLite
 
 on:
   push:
@@ -26,8 +26,6 @@ jobs:
       
     - name: Get current time
       shell: bash
-      env:
-        TZ: Asia/Shanghai
       run: echo "BUILDDATETIME=$(date '+%Y%m%d%H%M')" >> $GITHUB_ENV
       
     - name: Upload artifact
