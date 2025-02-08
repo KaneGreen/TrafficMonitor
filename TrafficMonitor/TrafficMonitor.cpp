@@ -12,7 +12,9 @@
 #include "auto_start_helper.h"
 #include "AppAlreadyRuningDlg.h"
 #include "WindowsSettingHelper.h"
+#ifndef DISABLE_WINDOWS_WEB_EXPERIENCE_DETECTOR
 #include "winrt/base.h"
+#endif
 #include <gdiplus.h>
 
 #ifdef _DEBUG
@@ -43,8 +45,10 @@ CTrafficMonitorApp::CTrafficMonitorApp()
     // TODO: 在此处添加构造代码，
     // 将所有重要的初始化放置在 InitInstance 中
     CRASHREPORT::StartCrashReport();
+#ifndef DISABLE_WINDOWS_WEB_EXPERIENCE_DETECTOR
     if (m_win_version.IsWindows11OrLater())
         winrt::init_apartment();
+#endif
 }
 
 void CTrafficMonitorApp::LoadConfig()
@@ -63,8 +67,8 @@ void CTrafficMonitorApp::LoadConfig()
     else
         is_chinese_language = (m_general_data.language == Language::SIMPLIFIED_CHINESE);
     m_general_data.update_source = ini.GetInt(L"general", L"update_source", is_chinese_language ? 1 : 0);   //如果当前语言为简体，则默认更新源为Gitee，否则为GitHub
-    //载入获取CPU利用率的方式，默认使用GetSystemTimes获取
-    m_general_data.cpu_usage_acquire_method = static_cast<GeneralSettingData::CpuUsageAcquireMethod>(ini.GetInt(L"general", L"cpu_usage_acquire_method", GeneralSettingData::CA_CPU_TIME));
+    //载入获取CPU利用率的方式，默认使用性能计数器获取
+    m_general_data.cpu_usage_acquire_method = static_cast<GeneralSettingData::CpuUsageAcquireMethod>(ini.GetInt(L"general", L"cpu_usage_acquire_method", GeneralSettingData::CA_PDH));
     //Lite版获取CPU利用率的方式不能为“通过硬件监控”
 #ifdef WITHOUT_TEMPERATURE
     if (m_general_data.cpu_usage_acquire_method == GeneralSettingData::CA_HARDWARE_MONITOR)

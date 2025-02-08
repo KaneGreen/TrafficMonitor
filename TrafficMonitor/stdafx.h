@@ -90,6 +90,7 @@ using std::ofstream;
 #define WARN_INSERT_TO_TASKBAR_CNT 20     //尝试嵌入任务栏的警告次数
 
 #define APP_NAME _T("TrafficMonitor")
+#define TASKBAR_WINDOW_NAME _T("TrafficMonitorTaskbarWindow")
 #define APP_CLASS_NAME _T("TrafficMonitor_r7XZaS4p") //程序主窗口的类名
 #define VERSION L"1.85"
 
@@ -121,3 +122,7 @@ using std::ofstream;
 
 //如果需要为Windows XP系统编译，请去掉下面一行代码的注释
 //#define COMPILE_FOR_WINXP
+
+//是否禁用WebExperience检测功能，用于检测Windows11下是否存在“小组件”
+//如果这部分功能导致编译出错，请去掉下面一行代码的注释
+//#define DISABLE_WINDOWS_WEB_EXPERIENCE_DETECTOR

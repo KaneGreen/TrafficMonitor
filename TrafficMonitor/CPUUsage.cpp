@@ -5,24 +5,105 @@
 #include <powerbase.h>
 #include <sysinfoapi.h>
 
+CPdhQuery::CPdhQuery(LPCTSTR _fullCounterPath)
+    : fullCounterPath(_fullCounterPath)
+{
+    Initialize();
+}
+
+CPdhQuery::~CPdhQuery()
+{
+    //关闭查询
+    PdhCloseQuery(query);
+}
+
+bool CPdhQuery::Initialize()
+{
+    if (isInitialized)
+        return true;
+
+    PDH_STATUS status;
+    //打开查询
+    status = PdhOpenQuery(NULL, NULL, &query);
+    if (status != ERROR_SUCCESS)
+        return false;
+
+    //添加计数器
+    status = PdhAddEnglishCounter(query, fullCounterPath.GetString(), NULL, &counter);
+    if (status != ERROR_SUCCESS)
+    {
+        PdhCloseQuery(query);
+        query = nullptr;
+        return false;
+    }
+
+    //初始化计数器
+    PdhCollectQueryData(query);
+    isInitialized = true;
+    return true;
+}
+
+bool CPdhQuery::QueryValue(double& value)
+{
+    if (!isInitialized)
+        return false;
+
+    //更新数据
+    PdhCollectQueryData(query);
+    PDH_FMT_COUNTERVALUE pdhValue;
+    DWORD dwValue;
+    PDH_STATUS status = PdhGetFormattedCounterValue(counter, PDH_FMT_DOUBLE, &dwValue, &pdhValue);
+    if (status != ERROR_SUCCESS)
+    {
+        return false;
+    }
+    value = pdhValue.doubleValue;
+    return true;
+}
+
+
+///////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////
+CCPUUsage::CCPUUsage()
+    : CPdhQuery(theApp.m_win_version.GetMajorVersion() >= 10 ? _T("\\Processor Information(_Total)\\% Processor Utility") : _T("\\Processor Information(_Total)\\% Processor Time"))
+{
+}
+
 void CCPUUsage::SetUseCPUTimes(bool use_get_system_times)
 {
     if (m_use_get_system_times != use_get_system_times)
     {
         m_use_get_system_times = use_get_system_times;
-        m_first_get_CPU_utility = true;
     }
 }
 
-int CCPUUsage::GetCPUUsage()
+int CCPUUsage::GetCpuUsage()
 {
+    int cpu_usage{};
     if (m_use_get_system_times)
-        return GetCPUUsageByGetSystemTimes();
+    {
+        cpu_usage = GetCpuUsageByGetSystemTimes();
+    }
     else
-        return GetCPUUsageByPdh();
+    {
+        //如果通过pdh获取CPU利用率失败，采用GetSystemTimes获取
+        if (!GetCPUUsageByPdh(cpu_usage))
+        {
+            cpu_usage = GetCpuUsageByGetSystemTimes();
+            //写入日志
+            static bool write_log = false;
+            if (!write_log)
+            {
+                CString str_log = CCommon::LoadTextFormat(IDS_GET_CPU_USAGE_BY_PDH_FAILED_LOG, { fullCounterPath });
+                CCommon::WriteLog(str_log, theApp.m_log_path.c_str());
+                write_log = true;
+            }
+        }
+    }
+    return cpu_usage;
 }
 
-int CCPUUsage::GetCPUUsageByGetSystemTimes()
+int CCPUUsage::GetCpuUsageByGetSystemTimes()
 {
     int cpu_usage{};
     FILETIME idleTime;
@@ -50,38 +131,17 @@ int CCPUUsage::GetCPUUsageByGetSystemTimes()
     return cpu_usage;
 }
 
-int CCPUUsage::GetCPUUsageByPdh()
+bool CCPUUsage::GetCPUUsageByPdh(int& cpu_usage)
 {
-    int cpu_usage{};
-    HQUERY hQuery;
-    HCOUNTER hCounter;
-    DWORD counterType;
-    PDH_RAW_COUNTER rawData;
-
-    PdhOpenQuery(NULL, 0, &hQuery);//开始查询
-    const wchar_t* query_str{};
-    if (theApp.m_win_version.GetMajorVersion() >= 10)
-        query_str = L"\\Processor Information(_Total)\\% Processor Utility";
-    else
-        query_str = L"\\Processor Information(_Total)\\% Processor Time";
-    PdhAddCounter(hQuery, query_str, NULL, &hCounter);
-    PdhCollectQueryData(hQuery);
-    PdhGetRawCounterValue(hCounter, &counterType, &rawData);
-
-    if (m_first_get_CPU_utility) {//需要获得两次数据才能计算CPU使用率
-        cpu_usage = 0;
-        m_first_get_CPU_utility = false;
-    }
-    else {
-        PDH_FMT_COUNTERVALUE fmtValue;
-        PdhCalculateCounterFromRawValue(hCounter, PDH_FMT_DOUBLE, &rawData, &m_last_rawData, &fmtValue);//计算使用率
-        cpu_usage = fmtValue.doubleValue;//传出数据
+    double value{};
+    if (QueryValue(value))
+    {
+        cpu_usage = static_cast<int>(value);
         if (cpu_usage > 100)
             cpu_usage = 100;
+        return true;
     }
-    m_last_rawData = rawData;//保存上一次数据
-    PdhCloseQuery(hQuery);//关闭查询
-    return cpu_usage;
+    return false;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////
@@ -97,7 +157,9 @@ typedef struct _PROCESSOR_POWER_INFORMATION {
 } PROCESSOR_POWER_INFORMATION, * PPROCESSOR_POWER_INFORMATION;
 
 CCpuFreq::CCpuFreq()
+    : CPdhQuery(_T("\\Processor Information(_Total)\\% Processor Performance"))
 {
+    //获取max_cpu_freq
     SYSTEM_INFO si;
     GetSystemInfo(&si);
     auto ppInfo = std::vector<PROCESSOR_POWER_INFORMATION>(si.dwNumberOfProcessors);
@@ -107,34 +169,15 @@ CCpuFreq::CCpuFreq()
     {
         max_cpu_freq = max(max_cpu_freq, ppInfo[i].MaxMhz / 1000.f);
     }
-
 }
 
-bool CCpuFreq::GetCpuFreq(float& freq) const
+bool CCpuFreq::GetCpuFreq(float& freq)
 {
-    HQUERY query;
-    PDH_STATUS status = PdhOpenQuery(NULL, NULL, &query);
-    if (status != ERROR_SUCCESS)
+    double value{};
+    if (QueryValue(value))
     {
-        return false;
+        freq = value / 100 * max_cpu_freq;
+        return true;
     }
-    HCOUNTER counter;
-    status = PdhAddCounterA(query, LPCSTR("\\Processor Information(_Total)\\% Processor Performance"), NULL, &counter);
-    if (status != ERROR_SUCCESS)
-    {
-        return false;
-    }
-    PdhCollectQueryData(query);
-    Sleep(200);
-    PdhCollectQueryData(query);
-    PDH_FMT_COUNTERVALUE pdhValue;
-    DWORD dwValue;
-    status = PdhGetFormattedCounterValue(counter, PDH_FMT_DOUBLE, &dwValue, &pdhValue);
-    if (status != ERROR_SUCCESS)
-    {
-        return false;
-    }
-    PdhCloseQuery(query);
-    freq = pdhValue.doubleValue / 100 * max_cpu_freq;
-    return true;
+    return false;
 }

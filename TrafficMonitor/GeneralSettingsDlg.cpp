@@ -61,15 +61,22 @@ void CGeneralSettingsDlg::SetControlMouseWheelEnable(bool enable)
     m_select_cpu_combo.SetMouseWheelEnable(enable);
 }
 
+void CGeneralSettingsDlg::OnSettingsApplied()
+{
+    //当设置被应用时，重置xxxx_ori的值
+    m_monitor_time_span_ori = m_data.monitor_time_span;
+    m_update_source_ori = m_data.update_source;
+}
+
 bool CGeneralSettingsDlg::ShowHardwareMonitorWarning()
 {
-    if (SHMessageBoxCheck(m_hWnd, CCommon::LoadText(IDS_HARDWARE_MONITOR_WARNING), APP_NAME, MB_OKCANCEL | MB_ICONWARNING, IDOK, _T("{B8A281A7-76DF-4F0F-BF6A-1A394EF8BAD5}")) == IDOK)
-    {
-        //if (SHMessageBoxCheck(m_hWnd, CCommon::LoadText(IDS_HARDWARE_MONITOR_WARNING2), APP_NAME, MB_OKCANCEL | MB_ICONWARNING, IDOK, _T("{2777F260-6175-41E4-AF59-4085B3F58E32}")) == IDOK)
-        //{
+    //如果已经有硬件监控项目被勾选了，则不再弹出提示
+    if (m_data.hardware_monitor_item != 0)
         return true;
-        //}
-    }
+
+    if (SHMessageBoxCheck(m_hWnd, CCommon::LoadText(IDS_HARDWARE_MONITOR_WARNING), APP_NAME, MB_OKCANCEL | MB_ICONWARNING, IDOK, _T("{B8A281A7-76DF-4F0F-BF6A-1A394EF8BAD5}")) == IDOK)
+        return true;
+
     return false;
 }
 
@@ -164,6 +171,7 @@ BEGIN_MESSAGE_MAP(CGeneralSettingsDlg, CTabDlg)
     ON_BN_CLICKED(IDC_SELECT_CONNECTIONS_BUTTON, &CGeneralSettingsDlg::OnBnClickedSelectConnectionsButton)
     ON_BN_CLICKED(IDC_RESET_AUTO_RUN_BUTTON, &CGeneralSettingsDlg::OnBnClickedResetAutoRunButton)
     ON_BN_CLICKED(IDC_USE_HARDWARE_MONITOR_RADIO, &CGeneralSettingsDlg::OnBnClickedUseHardwareMonitorRadio)
+    ON_EN_CHANGE(IDC_MONITOR_SPAN_EDIT, &CGeneralSettingsDlg::OnEnChangeMonitorSpanEdit)
 END_MESSAGE_MAP()
 
 
@@ -270,7 +278,11 @@ BOOL CGeneralSettingsDlg::OnInitDialog()
             CheckDlgButton(IDC_USE_CPU_TIME_RADIO, TRUE);
     }
 
+#ifndef WITHOUT_TEMPERATURE
     EnableDlgCtrl(IDC_USE_HARDWARE_MONITOR_RADIO, m_data.IsHardwareEnable(HI_CPU));
+#else
+    EnableDlgCtrl(IDC_USE_HARDWARE_MONITOR_RADIO, false);
+#endif
 
     m_monitor_span_edit.SetRange(MONITOR_TIME_SPAN_MIN, MONITOR_TIME_SPAN_MAX);
     m_monitor_span_edit.SetValue(m_data.monitor_time_span);
@@ -421,8 +433,6 @@ void CGeneralSettingsDlg::OnOK()
     {
         MessageBox(CCommon::LoadText(IDS_CFG_DIR_CHANGED_INFO), NULL, MB_ICONINFORMATION | MB_OK);
     }
-
-    m_data.monitor_time_span = m_monitor_span_edit.GetValue();
 
     //m_taskbar_item_modified = (theApp.m_taskbar_data.m_tbar_display_item != taskbar_displat_item_ori);
 
@@ -726,4 +736,10 @@ void CGeneralSettingsDlg::OnBnClickedResetAutoRunButton()
     CheckDlgButton(IDC_AUTO_RUN_CHECK, auto_run);
     //更新鼠标提示
     AddOrUpdateAutoRunTooltip(false);
+}
+
+
+void CGeneralSettingsDlg::OnEnChangeMonitorSpanEdit()
+{
+    m_data.monitor_time_span = m_monitor_span_edit.GetValue();
 }
