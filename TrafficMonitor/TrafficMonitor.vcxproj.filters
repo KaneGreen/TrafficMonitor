@@ -238,6 +238,12 @@
     <Filter Include="源文件和头文件\对话框类\选项设置对话框\Win11TaskbarSettingDlg">
       <UniqueIdentifier>{d048fa7a-2509-4713-9df3-c537c4b35018}</UniqueIdentifier>
     </Filter>
+    <Filter Include="资源文件\language">
+      <UniqueIdentifier>{f1f6139c-f164-49f7-86e8-0e5ac6bef657}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="源文件和头文件\公共的类\StrTable">
+      <UniqueIdentifier>{357eeb5d-af51-4701-83c9-e13a17c7f771}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <Text Include="ReadMe.txt" />
@@ -505,11 +511,23 @@
     <ClInclude Include="SkinAutoAdaptSettingDlg.h">
       <Filter>源文件和头文件\对话框类\SkinDlg</Filter>
     </ClInclude>
-    <ClInclude Include="FileDialogEx.h">
-      <Filter>源文件和头文件\头文件</Filter>
-    </ClInclude>
     <ClInclude Include="Win11TaskbarSettingDlg.h">
       <Filter>源文件和头文件\对话框类\选项设置对话框\Win11TaskbarSettingDlg</Filter>
+    </ClInclude>
+    <ClInclude Include="FileDialogEx.h">
+      <Filter>源文件和头文件\公共的类\FileDialogEx</Filter>
+    </ClInclude>
+    <ClInclude Include="StrTable.h">
+      <Filter>源文件和头文件\公共的类\StrTable</Filter>
+    </ClInclude>
+    <ClInclude Include="language.h">
+      <Filter>源文件和头文件\头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="ClassicalTaskbarDlg.h">
+      <Filter>源文件和头文件\TaskBarDlg</Filter>
+    </ClInclude>
+    <ClInclude Include="Win11TaskbarDlg.h">
+      <Filter>源文件和头文件\TaskBarDlg</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -747,11 +765,20 @@
     <ClCompile Include="SkinAutoAdaptSettingDlg.cpp">
       <Filter>源文件和头文件\对话框类\SkinDlg</Filter>
     </ClCompile>
-    <ClCompile Include="FileDialogEx.cpp">
-      <Filter>源文件和头文件</Filter>
-    </ClCompile>
     <ClCompile Include="Win11TaskbarSettingDlg.cpp">
       <Filter>源文件和头文件\对话框类\选项设置对话框\Win11TaskbarSettingDlg</Filter>
+    </ClCompile>
+    <ClCompile Include="FileDialogEx.cpp">
+      <Filter>源文件和头文件\公共的类\FileDialogEx</Filter>
+    </ClCompile>
+    <ClCompile Include="StrTable.cpp">
+      <Filter>源文件和头文件\公共的类\StrTable</Filter>
+    </ClCompile>
+    <ClCompile Include="ClassicalTaskbarDlg.cpp">
+      <Filter>源文件和头文件\TaskBarDlg</Filter>
+    </ClCompile>
+    <ClCompile Include="Win11TaskbarDlg.cpp">
+      <Filter>源文件和头文件\TaskBarDlg</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -764,10 +791,16 @@
       <Filter>资源文件</Filter>
     </None>
     <None Include="..\LICENSE" />
-    <None Include="res\license.bin">
-      <Filter>资源文件</Filter>
-    </None>
     <None Include="..\LICENSE_CN" />
+    <None Include="language\Simplified_Chinese.ini">
+      <Filter>资源文件\language</Filter>
+    </None>
+    <None Include="language\Traditional_Chinese.ini">
+      <Filter>资源文件\language</Filter>
+    </None>
+    <None Include="language\English.ini">
+      <Filter>资源文件\language</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <Image Include="res\menu_icon\close.ico">

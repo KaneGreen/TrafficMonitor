@@ -62,6 +62,15 @@ CString CPluginManagerDlg::GetDialogName() const
     return _T("PluginManagerDlg");
 }
 
+bool CPluginManagerDlg::InitializeControls()
+{
+    RepositionTextBasedControls({
+        { CtrlTextInfo::L4, IDC_PLUGIN_INFO_BUTTON, CtrlTextInfo::W32 },
+        { CtrlTextInfo::L3, IDC_OPTINS_BUTTON, CtrlTextInfo::W32 }
+    });
+    return true;
+}
+
 
 BEGIN_MESSAGE_MAP(CPluginManagerDlg, CBaseDialog)
     ON_NOTIFY(NM_RCLICK, IDC_LIST1, &CPluginManagerDlg::OnNMRClickList1)
@@ -156,7 +165,7 @@ BOOL CPluginManagerDlg::OnInitDialog()
 
     EnableControl();
 
-    m_menu.LoadMenu(IDR_PLUGIN_MANAGER_MENU); //装载右键菜单
+    CCommon::LoadMenuResource(m_menu, IDR_PLUGIN_MANAGER_MENU); //装载右键菜单
 
     //设置菜单图标
     CMenuIcon::AddIconToMenuItem(m_menu.GetSubMenu(0)->GetSafeHmenu(), ID_PLUGIN_DETAIL, FALSE, theApp.GetMenuIcon(IDI_INFO));

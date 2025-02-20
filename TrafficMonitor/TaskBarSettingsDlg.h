@@ -68,6 +68,7 @@ public:
 protected:
     void EnableControl();
     virtual void SetControlMouseWheelEnable(bool enable) override;
+    virtual bool InitializeControls() override;
 
     virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV 支持
 
@@ -118,4 +119,5 @@ public:
     afx_msg void OnBnClickedEnableColorEmojiCheck();
     afx_msg void OnCbnSelchangeDigitNumberCombo();
     afx_msg void OnBnClickedWin11SettingsButton();
+    afx_msg void OnBnClickedTaskbarWndInSecondaryDisplayCheck();
 };

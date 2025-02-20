@@ -114,9 +114,9 @@ void CTaskBarSettingsDlg::EnableControl()
     EnableDlgCtrl(IDC_NET_SPEED_FIGURE_MAX_VALUE_EDIT, m_data.show_netspeed_figure);
     EnableDlgCtrl(IDC_NET_SPEED_FIGURE_MAX_VALUE_UNIT_COMBO, m_data.show_netspeed_figure);
     //Win11下，任务栏左对齐时禁用“任务栏窗口显示在任务栏左侧”的选项
-    EnableDlgCtrl(IDC_TASKBAR_WND_ON_LEFT_CHECK, !theApp.m_is_windows11_taskbar || CWindowsSettingHelper::IsTaskbarCenterAlign());
+    EnableDlgCtrl(IDC_TASKBAR_WND_ON_LEFT_CHECK, !theApp.IsWindows11Taskbar() || CWindowsSettingHelper::IsTaskbarCenterAlign());
     EnableDlgCtrl(IDC_ENABLE_COLOR_EMOJI_CHECK, !m_data.disable_d2d);
-    EnableDlgCtrl(IDC_WIN11_SETTINGS_BUTTON, theApp.m_is_windows11_taskbar);
+    EnableDlgCtrl(IDC_WIN11_SETTINGS_BUTTON, theApp.IsWindows11Taskbar());
 }
 
 
@@ -131,6 +131,73 @@ void CTaskBarSettingsDlg::SetControlMouseWheelEnable(bool enable)
     m_vertical_margin_edit.SetMouseWheelEnable(enable);
     m_net_speed_figure_max_val_edit.SetMouseWheelEnable(enable);
     m_net_speed_figure_max_val_unit_combo.SetMouseWheelEnable(enable);
+}
+
+bool CTaskBarSettingsDlg::InitializeControls()
+{
+    RepositionTextBasedControls({
+        { CtrlTextInfo::L1, IDC_FONT_STATIC },
+        { CtrlTextInfo::C0, IDC_FONT_NAME_EDIT1 },
+        { CtrlTextInfo::R1, IDC_FONT_SIZE_STATIC },
+        { CtrlTextInfo::R2, IDC_FONT_SIZE_EDIT1 },
+        { CtrlTextInfo::R3, IDC_SET_FONT_BUTTON1, CtrlTextInfo::W16 }
+    });
+    RepositionTextBasedControls({
+        { CtrlTextInfo::L2, IDC_TXT_COLOR_STATIC },
+        { CtrlTextInfo::L1, IDC_TEXT_COLOR_STATIC1 },
+        { CtrlTextInfo::C0, IDC_SPECIFY_EACH_ITEM_COLOR_CHECK, CtrlTextInfo::W16 },
+        { CtrlTextInfo::R1, IDC_DEFAULT_STYLE_BUTTON, CtrlTextInfo::W16 },
+        { CtrlTextInfo::L2, IDC_BACK_COLOR_STATIC },
+        { CtrlTextInfo::L1, IDC_TEXT_COLOR_STATIC2 },
+        { CtrlTextInfo::C0, IDC_BACKGROUND_TRANSPARENT_CHECK, CtrlTextInfo::W16 }
+    });
+    RepositionTextBasedControls({
+        { CtrlTextInfo::C0, IDC_AUTO_ADAPT_LIGHT_THEME_CHECK, CtrlTextInfo::W16 },
+        { CtrlTextInfo::R1, IDC_AUTO_ADAPT_SETTINGS_BUTTON, CtrlTextInfo::W16 }
+    });
+    RepositionTextBasedControls({
+        { CtrlTextInfo::L4, IDC_NET_SPEED_WIDTH_STATIC },
+        { CtrlTextInfo::L3, IDC_DIGIT_NUMBER_COMBO },
+        { CtrlTextInfo::L2, IDC_CHARACTOR_STATIC }
+    });
+    RepositionTextBasedControls({
+        { CtrlTextInfo::L1, TXT_MEMORY_DISPLAY_MODE },
+        { CtrlTextInfo::C0, IDC_MEMORY_DISPLAY_COMBO }
+    });
+    RepositionTextBasedControls({
+        { CtrlTextInfo::L4, IDC_ITEM_SPACING_STATIC },
+        { CtrlTextInfo::L3, IDC_ITEM_SPACE_EDIT },
+        { CtrlTextInfo::L2, IDC_PIXELS_STATIC },
+        { CtrlTextInfo::L4, IDC_VERTICAL_MARGIN_STATIC },
+        { CtrlTextInfo::L3, IDC_VERTICAL_MARGIN_EDIT },
+        { CtrlTextInfo::L2, IDC_PIXELS_STATIC1 }
+    });
+    RepositionTextBasedControls({
+        { CtrlTextInfo::L4, IDC_WIN11_SETTINGS_BUTTON, CtrlTextInfo::W16 }
+    });
+    RepositionTextBasedControls({
+        { CtrlTextInfo::L1, IDC_DOUBLE_CLICK_ACTION_STATIC },
+        { CtrlTextInfo::C0, IDC_DOUBLE_CLICK_COMBO },
+        { CtrlTextInfo::L1, IDC_EXE_PATH_STATIC },
+        { CtrlTextInfo::C0, IDC_EXE_PATH_EDIT },
+        { CtrlTextInfo::R1, IDC_BROWSE_BUTTON }
+    });
+    RepositionTextBasedControls({
+    { CtrlTextInfo::L4, IDC_NET_SPEED_MAX_VALUE_STATIC },
+    { CtrlTextInfo::L3, IDC_NET_SPEED_FIGURE_MAX_VALUE_EDIT },
+    { CtrlTextInfo::L2, IDC_NET_SPEED_FIGURE_MAX_VALUE_UNIT_COMBO }
+        });
+    RepositionTextBasedControls({
+        { CtrlTextInfo::L4, IDC_USAGE_GRAPH_COLOR_STATIC },
+        { CtrlTextInfo::L3, IDC_TEXT_COLOR_STATIC3 }
+        });
+    RepositionTextBasedControls({
+        { CtrlTextInfo::L4, IDC_GRAPH_DISPLAY_MODE_STATIC },
+        { CtrlTextInfo::L3, IDC_CM_GRAPH_BAR_RADIO, CtrlTextInfo::W16 },
+        { CtrlTextInfo::L2, IDC_CM_GRAPH_PLOT_RADIO, CtrlTextInfo::W16 }
+        });
+
+    return true;
 }
 
 void CTaskBarSettingsDlg::DoDataExchange(CDataExchange* pDX)
@@ -196,6 +263,7 @@ BEGIN_MESSAGE_MAP(CTaskBarSettingsDlg, CTabDlg)
     ON_BN_CLICKED(IDC_ENABLE_COLOR_EMOJI_CHECK, &CTaskBarSettingsDlg::OnBnClickedEnableColorEmojiCheck)
     ON_CBN_SELCHANGE(IDC_DIGIT_NUMBER_COMBO, &CTaskBarSettingsDlg::OnCbnSelchangeDigitNumberCombo)
     ON_BN_CLICKED(IDC_WIN11_SETTINGS_BUTTON, &CTaskBarSettingsDlg::OnBnClickedWin11SettingsButton)
+    ON_BN_CLICKED(IDC_TASKBAR_WND_IN_SECONDARY_DISPLAY_CHECK, &CTaskBarSettingsDlg::OnBnClickedTaskbarWndInSecondaryDisplayCheck)
 END_MESSAGE_MAP()
 
 
@@ -231,6 +299,8 @@ BOOL CTaskBarSettingsDlg::OnInitDialog()
     ((CButton*)GetDlgItem(IDC_SHOW_STATUS_BAR_CHECK))->SetCheck(m_data.show_status_bar);
     ((CButton*)GetDlgItem(IDC_SEPARATE_VALUE_UNIT_CHECK))->SetCheck(m_data.separate_value_unit_with_space);
     ((CButton*)GetDlgItem(IDC_SHOW_TOOL_TIP_CHK))->SetCheck(m_data.show_tool_tip);
+
+    CheckDlgButton(IDC_TASKBAR_WND_IN_SECONDARY_DISPLAY_CHECK, m_data.show_taskbar_wnd_in_secondary_display);
 
     m_text_color_static.SetLinkCursor();
     m_back_color_static.SetLinkCursor();
@@ -846,4 +916,10 @@ void CTaskBarSettingsDlg::OnBnClickedWin11SettingsButton()
 {
     CWin11TaskbarSettingDlg dlg(m_data);
     dlg.DoModal();
+}
+
+
+void CTaskBarSettingsDlg::OnBnClickedTaskbarWndInSecondaryDisplayCheck()
+{
+    m_data.show_taskbar_wnd_in_secondary_display = (IsDlgButtonChecked(IDC_TASKBAR_WND_IN_SECONDARY_DISPLAY_CHECK) != FALSE);
 }

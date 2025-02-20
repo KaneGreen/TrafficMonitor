@@ -10,7 +10,12 @@ class CIniHelper
 {
 public:
 	CIniHelper(const wstring& file_path);
+    // 从资源文件加载ini (只能读取)
+    CIniHelper(UINT id, bool is_utf8 = true);
+    CIniHelper();
 	~CIniHelper();
+
+    void FromDirectString(const wstring& str_content);
 
 	void SetSaveAsUTF8(bool utf8);
 
@@ -40,6 +45,9 @@ public:
     void LoadPluginDisplayStr(bool is_main_window);
     void SavePluginDisplayStr(bool is_main_window);
 
+    // 获取一个AppName下所有键值对
+    void GetAllKeyValues(const wstring& AppName, std::map<wstring, wstring>& map) const;
+
 	bool Save();		//将ini文件保存到文件，成功返回true
 
 protected:
@@ -47,7 +55,8 @@ protected:
 	wstring m_ini_str;
 	bool m_save_as_utf8{ true };		//是否以及UTF8编码保存
 
-	void _WriteString(const wchar_t* AppName, const wchar_t* KeyName, const wstring& str);
+    static void UnEscapeString(wstring& str);
+    void _WriteString(const wchar_t* AppName, const wchar_t* KeyName, const wstring& str);
 	wstring _GetString(const wchar_t* AppName, const wchar_t* KeyName, const wchar_t* default_str) const;
 
     static wstring MergeStringList(const vector<wstring>& values);

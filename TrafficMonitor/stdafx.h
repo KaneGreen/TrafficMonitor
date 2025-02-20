@@ -53,6 +53,7 @@ using std::ofstream;
 #include <afxinet.h>    //用于支持使用网络相关的类
 #include <afxwin.h>
 
+#include "language.h"
 
 #ifdef _UNICODE
 #if defined _M_IX86
@@ -71,7 +72,7 @@ using std::ofstream;
 #define WM_REOPEN_TASKBAR_WND (WM_USER+1008)        //重新打开任务栏窗口
 #define WM_SETTINGS_APPLIED (WM_USER+1009)          //在选项设置中点击了“应用”按钮
 
-#define WM_NEXT_USER_MSG (WM_USER+1010)
+#define WM_NEXT_USER_MSG (WM_USER+1011)
 
 //#define CONFIG_PATH _T(".\\config.ini")
 //#define CONFIG_PATHA ".\\config.ini"

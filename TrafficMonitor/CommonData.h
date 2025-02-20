@@ -91,15 +91,6 @@ enum class DoubleClickAction
     NONE                //不执行任何动作
 };
 
-//语言
-enum class Language
-{
-    FOLLOWING_SYSTEM,       //跟随系统
-    ENGLISH,                //英语
-    SIMPLIFIED_CHINESE,     //简体中文
-    TRADITIONAL_CHINESE     //繁体中文
-};
-
 //颜色模式
 enum class ColorMode
 {
@@ -123,12 +114,12 @@ inline int FontSizeToLfHeight(int font_size, int dpi = 0)
 //字体
 struct FontInfo
 {
-    CString name;   //字体名称
-    int size;       //字体大小
-    bool bold;          //粗体
-    bool italic;        //斜体
-    bool underline;     //下划线
-    bool strike_out;    //删除线
+    CString name;       //字体名称
+    int size{ 9 };      //字体大小
+    bool bold{};        //粗体
+    bool italic{};      //斜体
+    bool underline{};   //下划线
+    bool strike_out{};  //删除线
 
     //创建一个CFont对象
     void Create(CFont& font, int dpi = 0)
@@ -287,6 +278,7 @@ struct TaskBarSettingData : public PublicSettingData
     unsigned int m_tbar_display_item{ TDI_UP | TDI_DOWN };      //任务栏窗口显示的项目
     StringSet plugin_display_item;                  //任务窗口显示的插件项目
 
+    bool show_taskbar_wnd_in_secondary_display{ false };    //是否在副显示器上显示任务栏窗口
     bool value_right_align{ false };    //数值是否右对齐
     int digits_number{ 4 };             //数据位数
     bool horizontal_arrange{ true };    //水平排列
@@ -345,8 +337,8 @@ struct GeneralSettingData
     NotifyTipSettings mainboard_temp_tip;   //主板温度超出提示
 
 
-    //语言
-    Language language;
+    //语言id
+    WORD language;
 
     bool show_all_interface{ true };
 

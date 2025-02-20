@@ -1,10 +1,10 @@
 ﻿#pragma once
 #include "afxdialogex.h"
-
+#include "BaseDialog.h"
 
 // CSkinAutoAdaptSettingDlg 对话框
 
-class CSkinAutoAdaptSettingDlg : public CDialog
+class CSkinAutoAdaptSettingDlg : public CBaseDialog
 {
 	DECLARE_DYNAMIC(CSkinAutoAdaptSettingDlg)
 
@@ -33,6 +33,8 @@ private:
 
 protected:
 	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV 支持
+    virtual CString GetDialogName() const override;
+    virtual bool InitializeControls() override;
 
 	DECLARE_MESSAGE_MAP()
 public:

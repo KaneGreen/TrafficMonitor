@@ -49,6 +49,14 @@ CTrafficMonitorApp::CTrafficMonitorApp()
     if (m_win_version.IsWindows11OrLater())
         winrt::init_apartment();
 #endif
+
+    CheckWindows11Taskbar();
+}
+
+void CTrafficMonitorApp::LoadLanguageConfig()
+{
+    CIniHelper ini{ m_config_path };
+    m_general_data.language = static_cast<WORD>(ini.GetInt(_T("general"), _T("language"), 0));
 }
 
 void CTrafficMonitorApp::LoadConfig()
@@ -59,13 +67,8 @@ void CTrafficMonitorApp::LoadConfig()
     m_general_data.check_update_when_start = ini.GetBool(_T("general"), _T("check_update_when_start"), true);
     m_general_data.allow_skin_cover_font = ini.GetBool(_T("general"), _T("allow_skin_cover_font"), true);
     m_general_data.allow_skin_cover_text = ini.GetBool(_T("general"), _T("allow_skin_cover_text"), true);
-    m_general_data.language = static_cast<Language>(ini.GetInt(_T("general"), _T("language"), 0));
     m_general_data.show_all_interface = ini.GetBool(L"general", L"show_all_interface", false);
-    bool is_chinese_language{};     //当前语言是否为简体中文
-    if (m_general_data.language == Language::FOLLOWING_SYSTEM)
-        is_chinese_language = CCommon::LoadText(IDS_LANGUAGE_CODE) == _T("2");
-    else
-        is_chinese_language = (m_general_data.language == Language::SIMPLIFIED_CHINESE);
+    bool is_chinese_language{ m_str_table.IsSimplifiedChinese() };     //当前语言是否为简体中文
     m_general_data.update_source = ini.GetInt(L"general", L"update_source", is_chinese_language ? 1 : 0);   //如果当前语言为简体，则默认更新源为Gitee，否则为GitHub
     //载入获取CPU利用率的方式，默认使用性能计数器获取
     m_general_data.cpu_usage_acquire_method = static_cast<GeneralSettingData::CpuUsageAcquireMethod>(ini.GetInt(L"general", L"cpu_usage_acquire_method", GeneralSettingData::CA_PDH));
@@ -128,7 +131,7 @@ void CTrafficMonitorApp::LoadConfig()
     m_main_wnd_data.hide_main_wnd_when_fullscreen = ini.GetBool(_T("config"), _T("hide_main_wnd_when_fullscreen"), true);
 
     FontInfo default_font{};
-    default_font.name = CCommon::LoadText(IDS_DEFAULT_FONT);
+    default_font.name = m_str_table.GetLanguageInfo().default_font_name.c_str();
     default_font.size = 10;
     ini.LoadFontData(_T("config"), m_main_wnd_data.font, default_font);
     //m_main_wnd_data.font.name = ini.GetString(_T("config"), _T("font_name"), CCommon::LoadText(IDS_MICROSOFT_YAHEI)).c_str();
@@ -193,6 +196,7 @@ void CTrafficMonitorApp::LoadConfig()
     m_taskbar_data.specify_each_item_color = ini.GetBool(L"task_bar", L"specify_each_item_color", false);
     //m_cfg_data.m_tbar_show_cpu_memory = ini.GetBool(_T("task_bar"), _T("task_bar_show_cpu_memory"), false);
     m_taskbar_data.m_tbar_display_item = ini.GetInt(L"task_bar", L"tbar_display_item", TDI_UP | TDI_DOWN);
+    m_taskbar_data.show_taskbar_wnd_in_secondary_display = ini.GetBool(L"task_bar", L"show_taskbar_wnd_in_secondary_display", false);
 
     //不含温度监控的版本，不显示温度监控相关项目
 #ifdef WITHOUT_TEMPERATURE
@@ -231,7 +235,7 @@ void CTrafficMonitorApp::LoadConfig()
     //m_taskbar_data.font.name = ini.GetString(_T("task_bar"), _T("tack_bar_font_name"), CCommon::LoadText(IDS_MICROSOFT_YAHEI)).c_str();
     //m_taskbar_data.font.size = ini.GetInt(_T("task_bar"), _T("tack_bar_font_size"), 9);
     default_font = FontInfo{};
-    default_font.name = CCommon::LoadText(IDS_DEFAULT_FONT);
+    default_font.name = m_str_table.GetLanguageInfo().default_font_name.c_str();
     default_font.size = 9;
     ini.LoadFontData(_T("task_bar"), m_taskbar_data.font, default_font);
 
@@ -257,7 +261,7 @@ void CTrafficMonitorApp::LoadConfig()
     m_taskbar_data.speed_unit = static_cast<SpeedUnit>(ini.GetInt(_T("task_bar"), _T("task_bar_speed_unit"), 0));
     m_taskbar_data.hide_unit = ini.GetBool(_T("task_bar"), _T("task_bar_hide_unit"), false);
     m_taskbar_data.hide_percent = ini.GetBool(_T("task_bar"), _T("task_bar_hide_percent"), false);
-    m_taskbar_data.value_right_align = ini.GetBool(_T("task_bar"), _T("value_right_align"), false);
+    m_taskbar_data.value_right_align = ini.GetBool(_T("task_bar"), _T("value_right_align"), true);
     m_taskbar_data.horizontal_arrange = ini.GetBool(_T("task_bar"), _T("horizontal_arrange"), false);
     m_taskbar_data.show_status_bar = ini.GetBool(_T("task_bar"), _T("show_status_bar"), false);
     m_taskbar_data.separate_value_unit_with_space = ini.GetBool(_T("task_bar"), _T("separate_value_unit_with_space"), true);
@@ -268,7 +272,7 @@ void CTrafficMonitorApp::LoadConfig()
     m_taskbar_data.double_click_exe = ini.GetString(L"task_bar", L"double_click_exe", (theApp.m_system_dir + L"\\Taskmgr.exe").c_str());
     m_taskbar_data.cm_graph_type = ini.GetBool(_T("task_bar"), _T("cm_graph_type"), true);
     m_taskbar_data.show_graph_dashed_box = ini.GetBool(L"task_bar", L"show_graph_dashed_box", false);
-    m_taskbar_data.item_space = ini.GetInt(L"task_bar", L"item_space", 4);
+    m_taskbar_data.item_space = ini.GetInt(L"task_bar", L"item_space", 8);
     m_taskbar_data.vertical_margin = ini.GetInt(L"task_bar", L"vertical_margin", 0);
     m_taskbar_data.window_offset_top = ini.GetInt(L"task_bar", L"window_offset_top", 0);
     m_taskbar_data.window_offset_left = ini.GetInt(L"task_bar", L"window_offset_left", 0);
@@ -421,6 +425,7 @@ void CTrafficMonitorApp::SaveConfig()
     ini.WriteInt(L"task_bar", L"tbar_display_item", m_taskbar_data.m_tbar_display_item);
     ini.SaveFontData(L"task_bar", m_taskbar_data.font);
     //ini.WriteBool(L"task_bar", L"task_bar_swap_up_down", m_taskbar_data.swap_up_down);
+    ini.WriteBool(L"task_bar", L"show_taskbar_wnd_in_secondary_display", m_taskbar_data.show_taskbar_wnd_in_secondary_display);
 
     ini.WriteString(_T("task_bar"), _T("up_string"), m_taskbar_data.disp_str.Get(TDI_UP));
     ini.WriteString(_T("task_bar"), _T("down_string"), m_taskbar_data.disp_str.Get(TDI_DOWN));
@@ -502,8 +507,7 @@ void CTrafficMonitorApp::SaveConfig()
     {
         if (m_cannot_save_config_warning)
         {
-            CString info;
-            info.LoadString(IDS_CONNOT_SAVE_CONFIG_WARNING);
+            CString info = CCommon::LoadText(IDS_CONNOT_SAVE_CONFIG_WARNING);
             info.Replace(_T("<%file_path%>"), m_config_path.c_str());
             AfxMessageBox(info, MB_ICONWARNING);
         }
@@ -631,15 +635,14 @@ void CTrafficMonitorApp::CheckUpdate(bool message)
     {
         CString info;
         //根据语言设置选择对应语言版本的更新内容
-        int language_code = _ttoi(CCommon::LoadText(IDS_LANGUAGE_CODE));
+        wstring language_tag = m_str_table.GetLanguageInfo().bcp_47;
         wstring contents_lan;
-        switch (language_code)
-        {
-        case 2: contents_lan = contents_zh_cn; break;
-        case 3: contents_lan = contents_zh_tw; break;
-        default: contents_lan = contents_en; break;
-        }
-
+        if (language_tag == L"zh-CN")
+            contents_lan = contents_zh_cn;
+        else if (language_tag == L"zh-TW")
+            contents_lan = contents_zh_tw;
+        else
+            contents_lan = contents_en;
         if (contents_lan.empty())
             info.Format(CCommon::LoadText(IDS_UPDATE_AVLIABLE), version.c_str());
         else
@@ -808,7 +811,7 @@ CString CTrafficMonitorApp::GetSystemInfoString()
 #endif
 
 #ifdef WITHOUT_TEMPERATURE
-    info += CCommon::LoadText(_T(" ("), IDS_WITHOUT_TEMPERATURE, _T(")"));
+    info += _T(" (Lite)");
 #endif
 
     info += _T("\r\nLast compiled date: ");
@@ -821,10 +824,10 @@ CString CTrafficMonitorApp::GetSystemInfoString()
 void CTrafficMonitorApp::InitMenuResourse()
 {
     //载入菜单
-    m_main_menu.LoadMenu(IDR_MENU1);
-    m_main_menu_plugin.LoadMenu(IDR_MENU1);
-    m_taskbar_menu.LoadMenu(IDR_TASK_BAR_MENU);
-    m_taskbar_menu_plugin.LoadMenu(IDR_TASK_BAR_MENU);
+    CCommon::LoadMenuResource(m_main_menu, IDR_MENU1);
+    CCommon::LoadMenuResource(m_main_menu_plugin, IDR_MENU1);
+    CCommon::LoadMenuResource(m_taskbar_menu, IDR_TASK_BAR_MENU);
+    CCommon::LoadMenuResource(m_taskbar_menu_plugin, IDR_TASK_BAR_MENU);
 
     //为插件菜单添加额外项目
     m_main_menu_plugin_sub_menu.CreatePopupMenu();
@@ -1011,8 +1014,7 @@ BOOL CTrafficMonitorApp::InitInstance()
     LoadPluginDisabledSettings();
     m_plugins.LoadPlugins();
 
-    //从ini文件载入设置
-    LoadConfig();
+    LoadLanguageConfig();
 
     //初始化界面语言
     CCommon::SetThreadLanguage(m_general_data.language);
@@ -1025,6 +1027,12 @@ BOOL CTrafficMonitorApp::InitInstance()
     //  //AfxMessageBox(_T("调试信息：程序已被Windows的重启管理器重新启动。"));
     //  return FALSE;
     //}
+
+    //初始化字符串资源
+    m_str_table.Init();
+
+    //从ini文件载入设置
+    LoadConfig();
 
     //检查是否已有实例正在运行
     LPCTSTR mutex_name{};
@@ -1342,10 +1350,36 @@ void CTrafficMonitorApp::UpdatePluginMenu(CMenu* pMenu, ITMPlugin* plugin, int p
     }
 }
 
+void CTrafficMonitorApp::CheckWindows11Taskbar()
+{
+    HWND hTaskbar = ::FindWindow(L"Shell_TrayWnd", NULL);
+    // 在“Shell_TrayWnd”的子窗口找到类名为“Windows.UI.Composition.DesktopWindowContentBridge”的窗口则认为是Windows11的任务栏
+    if (m_win_version.IsWindows11OrLater())
+    {
+        m_is_windows11_taskbar = (::FindWindowExW(hTaskbar, 0, L"Windows.UI.Composition.DesktopWindowContentBridge", NULL) != NULL);
+    }
+    else
+    {
+        m_is_windows11_taskbar = false;
+    }
+}
+
+bool CTrafficMonitorApp::DPIFromRect(const RECT& rect, UINT* out_dpi_x, UINT* out_dpi_y)
+{
+    HMONITOR h_current_monitor = ::MonitorFromRect(&rect, MONITOR_DEFAULTTONEAREST);
+    HRESULT hr = m_dll_functions.GetDpiForMonitor(h_current_monitor, MDT_EFFECTIVE_DPI, out_dpi_x, out_dpi_y);
+    return hr == S_OK;
+}
+
 void CTrafficMonitorApp::OnHelp()
 {
     // TODO: 在此添加命令处理程序代码
-    ShellExecute(NULL, _T("open"), _T("https://github.com/zhongyang219/TrafficMonitor/wiki"), NULL, NULL, SW_SHOW);
+    CString help_url;
+    if (m_str_table.IsSimplifiedChinese())
+        help_url = _T("https://github.com/zhongyang219/TrafficMonitor/wiki");
+    else
+        help_url = _T("https://github.com/zhongyang219/TrafficMonitor/wiki/Home_en");
+    ShellExecute(NULL, _T("open"), help_url, NULL, NULL, SW_SHOW);
 }
 
 
@@ -1357,9 +1391,8 @@ void CTrafficMonitorApp::OnFrequentyAskedQuestions()
         url_domain = _T("gitee.com");
     else
         url_domain = _T("github.com");
-    CString language_code{ CCommon::LoadText(IDS_LANGUAGE_CODE) };
     CString file_name;
-    if (language_code == _T("2"))
+    if (m_str_table.IsSimplifiedChinese())
         file_name = _T("Help.md");
     else
         file_name = _T("Help_en-us.md");
@@ -1377,11 +1410,11 @@ void CTrafficMonitorApp::OnUpdateLog()
         url_domain = _T("gitee.com");
     else
         url_domain = _T("github.com");
-    CString language_code{ CCommon::LoadText(IDS_LANGUAGE_CODE) };
+    wstring language_tag = m_str_table.GetLanguageInfo().bcp_47;
     CString file_name;
-    if (language_code == _T("2"))
+    if (language_tag == L"zh-CN")
         file_name = _T("update_log.md");
-    else if (language_code == _T("3"))
+    else if (language_tag == L"zh-TW")
         file_name = _T("update_log_zh-tw.md");
     else
         file_name = _T("update_log_en-us.md");
