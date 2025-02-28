@@ -51,6 +51,7 @@ CTrafficMonitorApp::CTrafficMonitorApp()
 #endif
 
     CheckWindows11Taskbar();
+    m_theme_color = CCommon::GetWindowsThemeColor();
 }
 
 void CTrafficMonitorApp::LoadLanguageConfig()
@@ -197,6 +198,7 @@ void CTrafficMonitorApp::LoadConfig()
     //m_cfg_data.m_tbar_show_cpu_memory = ini.GetBool(_T("task_bar"), _T("task_bar_show_cpu_memory"), false);
     m_taskbar_data.m_tbar_display_item = ini.GetInt(L"task_bar", L"tbar_display_item", TDI_UP | TDI_DOWN);
     m_taskbar_data.show_taskbar_wnd_in_secondary_display = ini.GetBool(L"task_bar", L"show_taskbar_wnd_in_secondary_display", false);
+    m_taskbar_data.secondary_display_index = ini.GetInt(L"task_bar", L"secondary_display_index", 0);
 
     //不含温度监控的版本，不显示温度监控相关项目
 #ifdef WITHOUT_TEMPERATURE
@@ -302,6 +304,7 @@ void CTrafficMonitorApp::LoadConfig()
     m_taskbar_data.show_netspeed_figure = ini.GetBool(L"task_bar", L"show_netspeed_figure", false);
     m_taskbar_data.netspeed_figure_max_value = ini.GetInt(L"task_bar", L"netspeed_figure_max_value", 512);
     m_taskbar_data.netspeed_figure_max_value_unit = ini.GetInt(L"task_bar", L"netspeed_figure_max_value_unit", 0);
+    m_taskbar_data.graph_color_following_system = ini.GetBool(L"task_bar", L"graph_color_following_system", false);
 
     if (CTaskBarDlgDrawCommonSupport::CheckSupport())
         m_taskbar_data.disable_d2d = ini.GetBool(L"task_bar", L"disable_d2d", true);
@@ -335,6 +338,7 @@ void CTrafficMonitorApp::SaveConfig()
     ini.WriteBool(_T("general"), _T("allow_skin_cover_font"), m_general_data.allow_skin_cover_font);
     ini.WriteBool(_T("general"), _T("allow_skin_cover_text"), m_general_data.allow_skin_cover_text);
     ini.WriteInt(_T("general"), _T("language"), static_cast<int>(m_general_data.language));
+    ini.WriteInt(L"general", L"update_source", m_general_data.update_source);
     ini.WriteBool(L"general", L"show_all_interface", m_general_data.show_all_interface);
     ini.WriteInt(L"general", L"cpu_usage_acquire_method", m_general_data.cpu_usage_acquire_method);
     ini.WriteInt(L"general", L"monitor_time_span", m_general_data.monitor_time_span);
@@ -426,6 +430,7 @@ void CTrafficMonitorApp::SaveConfig()
     ini.SaveFontData(L"task_bar", m_taskbar_data.font);
     //ini.WriteBool(L"task_bar", L"task_bar_swap_up_down", m_taskbar_data.swap_up_down);
     ini.WriteBool(L"task_bar", L"show_taskbar_wnd_in_secondary_display", m_taskbar_data.show_taskbar_wnd_in_secondary_display);
+    ini.WriteInt(L"task_bar", L"secondary_display_index", m_taskbar_data.secondary_display_index);
 
     ini.WriteString(_T("task_bar"), _T("up_string"), m_taskbar_data.disp_str.Get(TDI_UP));
     ini.WriteString(_T("task_bar"), _T("down_string"), m_taskbar_data.disp_str.Get(TDI_DOWN));
@@ -479,6 +484,7 @@ void CTrafficMonitorApp::SaveConfig()
     ini.WriteBool(L"task_bar", L"show_netspeed_figure", m_taskbar_data.show_netspeed_figure);
     ini.WriteInt(L"task_bar", L"netspeed_figure_max_value", m_taskbar_data.netspeed_figure_max_value);
     ini.WriteInt(L"task_bar", L"netspeed_figure_max_value_unit", m_taskbar_data.netspeed_figure_max_value_unit);
+    ini.WriteBool(L"task_bar", L"graph_color_following_system", m_taskbar_data.graph_color_following_system);
 
     ini.WriteBool(L"task_bar", L"disable_d2d", m_taskbar_data.disable_d2d);
     ini.WriteBool(L"task_bar", L"enable_colorful_emoji", m_taskbar_data.enable_colorful_emoji);
@@ -1008,28 +1014,17 @@ BOOL CTrafficMonitorApp::InitInstance()
     //  CCommon::MoveAFile(log_path_old.c_str(), m_log_path.c_str());
     //#endif // !_DEBUG
 
-    bool is_windows10_fall_creator = m_win_version.IsWindows10FallCreatorOrLater();
-
-    //载入插件
-    LoadPluginDisabledSettings();
-    m_plugins.LoadPlugins();
-
     LoadLanguageConfig();
 
     //初始化界面语言
     CCommon::SetThreadLanguage(m_general_data.language);
 
-    //wstring cmd_line{ m_lpCmdLine };
-    //bool is_restart{ cmd_line.find(L"RestartByRestartManager") != wstring::npos };        //如果命令行参数中含有字符串“RestartByRestartManager”则说明程序是被Windows重新启动的
-    ////bool when_start{ CCommon::WhenStart(m_no_multistart_warning_time) };
-    //if (m_exit_when_start_by_restart_manager && is_restart && is_windows10_fall_creator)      //当前Windows版本是秋季创意者更新时，如果程序被重新启动，则直接退出程序
-    //{
-    //  //AfxMessageBox(_T("调试信息：程序已被Windows的重启管理器重新启动。"));
-    //  return FALSE;
-    //}
-
     //初始化字符串资源
     m_str_table.Init();
+
+    //载入插件
+    LoadPluginDisabledSettings();
+    m_plugins.LoadPlugins();
 
     //从ini文件载入设置
     LoadConfig();
@@ -1172,9 +1167,6 @@ BOOL CTrafficMonitorApp::InitInstance()
     {
         delete pShellManager;
     }
-
-    // 释放GDI+
-    Gdiplus::GdiplusShutdown(m_gdiplusToken);
 
 #ifndef _AFXDLL
     ControlBarCleanUp();
@@ -1371,6 +1363,16 @@ bool CTrafficMonitorApp::DPIFromRect(const RECT& rect, UINT* out_dpi_x, UINT* ou
     return hr == S_OK;
 }
 
+COLORREF CTrafficMonitorApp::GetThemeColor() const
+{
+    return m_theme_color;
+}
+
+void CTrafficMonitorApp::SetThemeColor(COLORREF color)
+{
+    m_theme_color = color;
+}
+
 void CTrafficMonitorApp::OnHelp()
 {
     // TODO: 在此添加命令处理程序代码
@@ -1421,4 +1423,13 @@ void CTrafficMonitorApp::OnUpdateLog()
     CString url;
     url.Format(_T("https://%s/zhongyang219/TrafficMonitor/blob/master/UpdateLog/%s"), url_domain.GetString(), file_name.GetString());
     ShellExecute(NULL, _T("open"), url, NULL, NULL, SW_SHOW);
+}
+
+
+int CTrafficMonitorApp::ExitInstance()
+{
+    // 释放GDI+
+    Gdiplus::GdiplusShutdown(m_gdiplusToken);
+
+    return CWinApp::ExitInstance();
 }

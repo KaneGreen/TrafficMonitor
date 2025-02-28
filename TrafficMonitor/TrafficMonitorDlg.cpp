@@ -15,6 +15,7 @@
 #include "SupportedRenderEnums.h"
 #include "ClassicalTaskbarDlg.h"
 #include "Win11TaskbarDlg.h"
+#include "TaskbarHelper.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -122,6 +123,8 @@ BEGIN_MESSAGE_MAP(CTrafficMonitorDlg, CDialog)
     ON_COMMAND(ID_PLUGIN_DETAIL, &CTrafficMonitorDlg::OnPluginDetail)
     ON_COMMAND(ID_PLUGIN_OPTIONS_TASKBAR, &CTrafficMonitorDlg::OnPluginOptionsTaksbar)
     ON_COMMAND(ID_PLUGIN_DETAIL_TASKBAR, &CTrafficMonitorDlg::OnPluginDetailTaksbar)
+    ON_WM_POWERBROADCAST()
+    ON_WM_DWMCOLORIZATIONCOLORCHANGED()
 END_MESSAGE_MAP()
 
 
@@ -730,6 +733,7 @@ void CTrafficMonitorDlg::ApplySettings(COptionsDlg& optionsDlg)
     bool d2d_turned_on = (theApp.m_taskbar_data.disable_d2d && !optionsDlg.m_tab2_dlg.m_data.disable_d2d);
     //需要重新关闭再打开任务栏窗口的情况
     bool taskbar_changed = (theApp.m_taskbar_data.show_taskbar_wnd_in_secondary_display != optionsDlg.m_tab2_dlg.m_data.show_taskbar_wnd_in_secondary_display
+        || theApp.m_taskbar_data.secondary_display_index != optionsDlg.m_tab2_dlg.m_data.secondary_display_index
         || theApp.m_taskbar_data.disable_d2d != optionsDlg.m_tab2_dlg.m_data.disable_d2d
         || theApp.m_taskbar_data.IsTaskbarTransparent() != optionsDlg.m_tab2_dlg.m_data.IsTaskbarTransparent()
         || theApp.m_taskbar_data.auto_set_background_color != optionsDlg.m_tab2_dlg.m_data.auto_set_background_color
@@ -1915,19 +1919,26 @@ void CTrafficMonitorDlg::OnTimer(UINT_PTR nIDEvent)
 
     if (nIDEvent == TASKBAR_TIMER)
     {
+        ++m_taskbar_timer_cnt;
+        if (m_taskbar_timer_cnt % 5 == 0 && theApp.m_cfg_data.m_show_task_bar_wnd && theApp.m_taskbar_data.show_taskbar_wnd_in_secondary_display)
+        {
+            static int last_taskbar_num = 0;
+            int taskbar_num = CTaskbarHelper::GetSecondaryTaskbarNum();
+            //如果副显示器的任务栏数量发生变化，则重启任务栏窗口
+            if (last_taskbar_num != taskbar_num)
+            {
+                last_taskbar_num = taskbar_num;
+                //延迟一段时间后重启任务栏窗口
+                KillTimer(RESTART_TASKBAR_TIMER);
+                SetTimer(RESTART_TASKBAR_TIMER, 500, [](HWND, UINT, UINT_PTR, DWORD) {
+                    theApp.m_pMainWnd->SendMessage(WM_REOPEN_TASKBAR_WND);
+                    ::KillTimer(theApp.m_pMainWnd->GetSafeHwnd(), RESTART_TASKBAR_TIMER);
+                });
+            }
+        }
+
         if (IsTaskbarWndValid())
         {
-            ++m_taskbar_timer_cnt;
-            
-            if (theApp.m_taskbar_data.show_taskbar_wnd_in_secondary_display && CWindowsSettingHelper::IsTaskbarShowingInAllDisplays())
-            {
-                if (m_tBarDlg->IsTaskbarChanged())
-                {
-                    CloseTaskBarWnd();
-                    OpenTaskBarWnd();
-                }
-            }
-
             //启动时就隐藏主窗体的情况下，无法收到dpichange消息，故需要手动检查
             //每次100ms*10执行一次屏幕DPI检查，并且尽可能少的检查操作系统版本
             if (m_taskbar_timer_cnt % 10 == 0 && theApp.m_win_version.IsWindows8Point1OrLater())
@@ -2756,22 +2767,40 @@ void CTrafficMonitorDlg::OnPaint()
 
 afx_msg LRESULT CTrafficMonitorDlg::OnDpichanged(WPARAM wParam, LPARAM lParam)
 {
-    int dpi = LOWORD(wParam);
-    theApp.SetDPI(dpi);
-    //当系统版本小于Windows 8.1时使用原来的行为
-    if (IsTaskbarWndValid() && !theApp.m_win_version.IsWindows8Point1OrLater())
-    {
-        //为任务栏窗口重新指定DPI
-        m_tBarDlg->SetDPI(dpi);
-        //根据新的DPI重新设置任务栏窗口字体
-        m_tBarDlg->SetTextFont();
-    }
+    static int dpi;
+    static CTrafficMonitorDlg* pThis;
+    dpi = LOWORD(wParam);
+    pThis = this;
 
-    LoadSkinLayout();   //根据当前选择的皮肤获取布局数据
-    SetItemPosition();  //初始化窗口位置
-    LoadBackGroundImage();
-    SetTextFont();      //重新加载字体
-    Invalidate(FALSE);  //重绘界面
+    //由于当悬浮拖动到不同DPI的显示器上时，会短时间内触发多次DPI更改消息，因此这里在收到消息后延迟一段时间后再处理
+    KillTimer(DPI_CHANGE_TIMER);
+    SetTimer(DPI_CHANGE_TIMER, 500, [](HWND, UINT, UINT_PTR, DWORD) {
+        //根据主窗口的位置获取DPI
+        CRect rect;
+        pThis->GetWindowRect(rect);
+        UINT dpi_x, dpi_y;
+        if (theApp.DPIFromRect(rect, &dpi_x, &dpi_y))   //获取成功，则使用根据主窗口位置得到的dpi
+            dpi = dpi_x;
+        TRACE("Dpi changed: %d\n", dpi);
+
+        theApp.SetDPI(dpi);
+        //当系统版本小于Windows 8.1时使用原来的行为
+        if (pThis->IsTaskbarWndValid() && !theApp.m_win_version.IsWindows8Point1OrLater())
+        {
+            //为任务栏窗口重新指定DPI
+            pThis->m_tBarDlg->SetDPI(dpi);
+            //根据新的DPI重新设置任务栏窗口字体
+            pThis->m_tBarDlg->SetTextFont();
+        }
+
+        pThis->LoadSkinLayout();   //根据当前选择的皮肤获取布局数据
+        pThis->SetItemPosition();  //初始化窗口位置
+        pThis->LoadBackGroundImage();
+        pThis->SetTextFont();      //重新加载字体
+        pThis->Invalidate(FALSE);  //重绘界面
+
+        pThis->KillTimer(DPI_CHANGE_TIMER);
+    });
 
     return 0;
 }
@@ -2979,4 +3008,60 @@ void CTrafficMonitorDlg::OnPluginDetailTaksbar()
             dlg.DoModal();
         }
     }
+}
+
+
+UINT CTrafficMonitorDlg::OnPowerBroadcast(UINT nPowerEvent, LPARAM nEventData)
+{
+    // 系统从休眠恢复
+    if (nPowerEvent == PBT_APMRESUMESUSPEND)
+    {
+        //延迟一段时间后重新初始化网络连接
+        KillTimer(INIT_CONNECT_TIMER);
+        static CTrafficMonitorDlg* pThis = this;
+        static int check_times = 0;
+        SetTimer(INIT_CONNECT_TIMER, 10000, [](HWND, UINT, UINT_PTR, DWORD) {
+            pThis->IniConnection();
+            check_times++;
+
+            //写入日志
+            CString info = CCommon::LoadTextFormat(IDS_RESTORE_FROM_SLEEP_LOG, {pThis->m_restart_cnt });
+            CCommon::WriteLog(info, theApp.m_log_path.c_str());
+
+            //如果连接为空，定时器继续运行，每隔一段时间重新初始化连接
+            if (pThis->m_connections.size() == 0)
+            {
+                //超过20次，结束定时器
+                if (check_times >= 20)
+                    pThis->KillTimer(INIT_CONNECT_TIMER);
+            }
+            //成功获取到连接，结束定时器
+            else
+            {
+                pThis->KillTimer(INIT_CONNECT_TIMER);
+                check_times = 0;
+            }
+        });
+    }
+    return CDialog::OnPowerBroadcast(nPowerEvent, nEventData);
+}
+
+
+void CTrafficMonitorDlg::OnColorizationColorChanged(DWORD dwColorizationColor, BOOL bOpacity)
+{
+    // 此功能要求 Windows Vista 或更高版本。
+    // _WIN32_WINNT 符号必须 >= 0x0600。
+    // TODO: 在此添加消息处理程序代码和/或调用默认值
+
+    static DWORD last_color;
+    if (last_color != dwColorizationColor)
+    {
+        last_color = dwColorizationColor;
+        BYTE red = (dwColorizationColor >> 16) & 0xFF;
+        BYTE green = (dwColorizationColor >> 8) & 0xFF;
+        BYTE blue = dwColorizationColor & 0xFF;
+        COLORREF theme_color = RGB(red, green, blue);
+        theApp.SetThemeColor(theme_color);
+    }
+    CDialog::OnColorizationColorChanged(dwColorizationColor, bOpacity);
 }

@@ -63,11 +63,10 @@ void CStrTable::Init()
 {
     // 获取 IDR_LANGUAGE 资源的所有语言版本
     EnumResourceLanguages(NULL, _T("TEXT"), MAKEINTRESOURCE(IDR_LANGUAGE), EnumResLangProc, reinterpret_cast<LONG_PTR>(&m_language_list));
-
-    //先读取默认字符串资源，如果当前语言中没有对应字符串，则会使用默认的字符串资源
-    CIniHelper ini_default(IDR_LANGUAGE_DEFAULT);
-    ini_default.GetAllKeyValues(L"text", m_text_string_table);
-    ini_default.GetAllKeyValues(L"menu", m_menu_string_table);
+    //按bcp47排序
+    std::sort(m_language_list.begin(), m_language_list.end(), [](const LanguageInfo& a, const LanguageInfo& b) {
+        return a.bcp_47 < b.bcp_47;
+    });
 
     //读取字符串资源
     CIniHelper ini(IDR_LANGUAGE);

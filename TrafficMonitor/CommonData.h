@@ -279,6 +279,7 @@ struct TaskBarSettingData : public PublicSettingData
     StringSet plugin_display_item;                  //任务窗口显示的插件项目
 
     bool show_taskbar_wnd_in_secondary_display{ false };    //是否在副显示器上显示任务栏窗口
+    int secondary_display_index{};      //在第几个副显示器上显示任务栏窗口
     bool value_right_align{ false };    //数值是否右对齐
     int digits_number{ 4 };             //数据位数
     bool horizontal_arrange{ true };    //水平排列
@@ -303,6 +304,8 @@ struct TaskBarSettingData : public PublicSettingData
     int netspeed_figure_max_value;          //网速占用图的最大值
     int netspeed_figure_max_value_unit{};   //网速占用图最大值的单位（0: KB, 1: MB）
     unsigned __int64 GetNetspeedFigureMaxValueInBytes() const;  //获取网速占用图的最大值（以字节为单位）
+    bool graph_color_following_system{ false }; //占用图颜色跟随系统主题色
+    COLORREF GetUsageGraphColor() const;    //获取占用图的颜色
 
     bool disable_d2d{ false };//是否禁用d2d绘图
     DWORD update_layered_window_error_code{0}; // 使用D2D1渲染时，UpdateLayeredWindowIndirect失败的错误代码，会在关闭任务栏窗口时被重置为0

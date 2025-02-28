@@ -269,4 +269,6 @@ public:
     afx_msg void OnPluginDetail();
     afx_msg void OnPluginOptionsTaksbar();
     afx_msg void OnPluginDetailTaksbar();
+    afx_msg UINT OnPowerBroadcast(UINT nPowerEvent, LPARAM nEventData);
+    afx_msg void OnColorizationColorChanged(DWORD dwColorizationColor, BOOL bOpacity);
 };

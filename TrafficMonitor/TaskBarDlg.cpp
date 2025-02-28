@@ -11,6 +11,7 @@
 #include "Nullable.hpp"
 #include "DrawCommonFactory.h"
 #include "WindowsWebExperienceDetector.h"
+#include "TaskbarHelper.h"
 
 #ifdef DEBUG
 // DX调试信息捕获
@@ -605,11 +606,12 @@ void CTaskBarDlg::DisableRenderFeatureIfNecessary(CSupportedRenderEnums& ref_sup
 
 void CTaskBarDlg::TryDrawStatusBar(IDrawCommon& drawer, const CRect& rect_bar, int usage_percent)
 {
+    COLORREF graph_color = theApp.m_taskbar_data.GetUsageGraphColor();
     CSize fill_size = CSize(rect_bar.Width() * usage_percent / 100, rect_bar.Height());
     CRect rect_fill(rect_bar.TopLeft(), fill_size);
     if (theApp.m_taskbar_data.show_graph_dashed_box)
-        drawer.DrawRectOutLine(rect_bar, theApp.m_taskbar_data.status_bar_color, 1, true);
-    drawer.FillRect(rect_fill, theApp.m_taskbar_data.status_bar_color);
+        drawer.DrawRectOutLine(rect_bar, graph_color, 1, true);
+    drawer.FillRect(rect_fill, graph_color);
 }
 
 bool CTaskBarDlg::AdjustWindowPos(bool force_adjust)
@@ -693,11 +695,19 @@ void CTaskBarDlg::ApplyWindowTransparentColor()
 #endif // !COMPILE_FOR_WINXP
 }
 
-bool CTaskBarDlg::IsTaskbarChanged()
-{
-    bool is_scendary_display;
-    return m_hTaskbar != FindTaskbarHandle(is_scendary_display);
-}
+//bool CTaskBarDlg::IsTaskbarChanged()
+//{
+//    bool is_scendary_display;
+//    static HWND last_taskbar_handle{};
+//    HWND taskbar_handle = FindTaskbarHandle(is_scendary_display);
+//    bool changed{ false };
+//    if (last_taskbar_handle != taskbar_handle)
+//    {
+//        changed = true;
+//        last_taskbar_handle = taskbar_handle;
+//    }
+//    return changed;
+//}
 
 void CTaskBarDlg::WidthChanged()
 {
@@ -753,11 +763,23 @@ HWND CTaskBarDlg::FindTaskbarHandle(bool& is_scendary_display)
 {
     is_scendary_display = false;
     HWND hTaskbar = nullptr;
+    //显示在副显示器上
     if (theApp.m_taskbar_data.show_taskbar_wnd_in_secondary_display && CWindowsSettingHelper::IsTaskbarShowingInAllDisplays())
     {
-        hTaskbar = ::FindWindow(_T("Shell_SecondaryTrayWnd"), NULL);
-        if (hTaskbar != nullptr)
-            is_scendary_display = true;
+        //获取所有副显示器的任务栏
+        std::vector<HWND> secondary_taskbars;
+        CTaskbarHelper::GetAllSecondaryDisplayTaskbar(secondary_taskbars);
+        if (!secondary_taskbars.empty())
+        {
+            int index = theApp.m_taskbar_data.secondary_display_index;
+            if (index < 0)
+                index = 0;
+            if (index >= static_cast<int>(secondary_taskbars.size()))
+                index = static_cast<int>(secondary_taskbars.size()) - 1;
+            hTaskbar = secondary_taskbars[index];
+            if (hTaskbar != nullptr)
+                is_scendary_display = true;
+        }
     }
     if (hTaskbar == nullptr)
         hTaskbar = ::FindWindow(_T("Shell_TrayWnd"), NULL);
@@ -881,7 +903,7 @@ void CTaskBarDlg::ApplySettings()
 void CTaskBarDlg::CalculateWindowSize()
 {
     bool horizontal_arrange = theApp.m_taskbar_data.horizontal_arrange && m_taskbar_on_top_or_bottom;
-    if (theApp.m_taskbar_data.m_tbar_display_item == 0)
+    if (theApp.m_taskbar_data.m_tbar_display_item == 0 && theApp.m_taskbar_data.plugin_display_item.data().empty())
         theApp.m_taskbar_data.m_tbar_display_item |= TDI_UP;        //至少显示一项
 
     m_item_widths.clear();
@@ -1557,8 +1579,9 @@ bool CTaskBarDlg::CheckClickedItem(CPoint point)
 void CTaskBarDlg::TryDrawGraph(IDrawCommon& drawer, const CRect& value_rect, CommonDisplayItem item_type)
 {
     std::list<int>& list = m_map_history_data[item_type];
+    COLORREF graph_color = theApp.m_taskbar_data.GetUsageGraphColor();
     if (theApp.m_taskbar_data.show_graph_dashed_box)
-        drawer.DrawRectOutLine(value_rect, theApp.m_taskbar_data.status_bar_color, 1, true);
+        drawer.DrawRectOutLine(value_rect, graph_color, 1, true);
     int i{ -1 };
     for (const auto& item : list)
     {
@@ -1570,7 +1593,7 @@ void CTaskBarDlg::TryDrawGraph(IDrawCommon& drawer, const CRect& value_rect, Com
         //从右往左画线
         CPoint start_point = CPoint(value_rect.right - i, value_rect.bottom);
         int height = item * value_rect.Height() / 100;
-        drawer.DrawLine(start_point, height, theApp.m_taskbar_data.status_bar_color);
+        drawer.DrawLine(start_point, height, graph_color);
     }
 }
 
