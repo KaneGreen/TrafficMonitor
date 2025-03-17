@@ -60,32 +60,28 @@ wstring& DispStrings::Get(CommonDisplayItem item)
     return map_str[item];
 }
 
+const wstring& DispStrings::GetConst(CommonDisplayItem item) const
+{
+    auto iter = map_str.find(item);
+    if (iter != map_str.end())
+        return iter->second;
+    static wstring empty_str;
+    return empty_str;
+}
+
 const std::map<CommonDisplayItem, wstring>& DispStrings::GetAllItems() const
 {
     return map_str;
 }
 
-void DispStrings::operator=(const DispStrings& disp_str)
+bool DispStrings::operator==(const DispStrings& disp_str) const
 {
-    std::map<CommonDisplayItem, wstring> tmp = disp_str.map_str;
-    //如果赋值的字符串是定义的无效字符串，则不赋值
-    for (auto iter = tmp.begin(); iter != tmp.end(); ++iter)
-    {
-        if (iter->second == NONE_STR)
-            iter->second = map_str[iter->first];
-    }
-
-    map_str = tmp;
+    return map_str == disp_str.map_str;
 }
 
 bool DispStrings::IsInvalid() const
 {
-    for (auto iter = map_str.begin(); iter != map_str.end(); ++iter)
-    {
-        if (iter->second == NONE_STR)
-            return true;
-    }
-    return false;
+    return map_str.empty();
 }
 
 void DispStrings::Load(const std::wstring& plugin_id, const std::wstring& disp_str)
@@ -95,6 +91,13 @@ void DispStrings::Load(const std::wstring& plugin_id, const std::wstring& disp_s
     {
         map_str[plugin] = disp_str;
     }
+}
+
+///////////////////////////////////////////////////////////////////////////////////
+bool FontInfo::operator==(const FontInfo& a) const
+{
+    return name == a.name && size == a.size && bold == a.bold && italic == a.italic
+        && underline == a.underline && strike_out == a.strike_out;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////
@@ -156,6 +159,37 @@ std::set<std::wstring>& StringSet::data()
     return string_set;
 }
 
+///////////////////////////////////////////////////////////////////////////////////
+bool SkinSettingData::IsEmpty() const
+{
+    return font.name.IsEmpty() && disp_str.GetAllItems().empty() && text_colors.empty();
+}
+
+bool SkinSettingData::operator==(const SkinSettingData& a) const
+{
+    return font == a.font && disp_str == a.disp_str && text_colors == a.text_colors && specify_each_item_color == a.specify_each_item_color;
+}
+
+///////////////////////////////////////////////////////////////////////////////////
+void MainWndSettingData::FormSkinSettingData(const SkinSettingData& sking_setting_data)
+{
+    font = sking_setting_data.font;
+    disp_str = sking_setting_data.disp_str;
+    text_colors = sking_setting_data.text_colors;
+    specify_each_item_color = sking_setting_data.specify_each_item_color;
+}
+
+SkinSettingData MainWndSettingData::ToSkinSettingData() const
+{
+    SkinSettingData sking_setting_data;
+    sking_setting_data.font = font;
+    sking_setting_data.disp_str = disp_str;
+    sking_setting_data.text_colors = text_colors;
+    sking_setting_data.specify_each_item_color = specify_each_item_color;
+    return sking_setting_data;
+}
+
+///////////////////////////////////////////////////////////////////////////////////
 bool TaskBarSettingData::IsTaskbarTransparent() const
 {
     if (CWindowsSettingHelper::IsWindows10LightTheme() || theApp.m_win_version.IsWindows8Or8point1() || theApp.IsWindows11Taskbar())

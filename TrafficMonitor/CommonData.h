@@ -57,7 +57,6 @@ enum HardwareItem
 };
 
 #define DEF_CH L'\"'        //写入和读取ini文件字符串时，在字符串前后添加的字符
-#define NONE_STR L"@@@"     //用于指定一个无效字符串
 struct DispStrings      //显示的文本
 {
 private:
@@ -66,10 +65,11 @@ private:
 public:
     //获取一个显示的文本
     wstring& Get(CommonDisplayItem item);
+    const wstring& GetConst(CommonDisplayItem item) const;
 
     const std::map<CommonDisplayItem, wstring>& GetAllItems() const;
 
-    void operator=(const DispStrings& disp_str);     //重载赋值运算符
+    bool operator==(const DispStrings& disp_str) const;
 
     //载入一个插件项目的显示文本
     void Load(const std::wstring& plugin_id, const std::wstring& disp_str);
@@ -121,8 +121,10 @@ struct FontInfo
     bool underline{};   //下划线
     bool strike_out{};  //删除线
 
+    bool operator==(const FontInfo& a) const;
+
     //创建一个CFont对象
-    void Create(CFont& font, int dpi = 0)
+    void Create(CFont& font, int dpi = 0) const
     {
         font.CreateFont(
             FontSizeToLfHeight(size, dpi), // nHeight
@@ -208,6 +210,18 @@ enum class MemoryDisplay
     MEMORY_AVAILABLE        //内存可用
 };
 
+//为每个皮肤单独保存的数据
+struct SkinSettingData
+{
+    FontInfo font;          //字体
+    DispStrings disp_str;   //显示的文本
+    std::map<CommonDisplayItem, COLORREF> text_colors{};    //文字的颜色
+    bool specify_each_item_color{};
+
+    bool IsEmpty() const;
+    bool operator==(const SkinSettingData& a) const;
+};
+
 //选项设置中“主窗口设置”和“任务栏窗口设置”中公共的数据（不使用此结构体创建对象）
 struct PublicSettingData
 {
@@ -231,7 +245,7 @@ struct PublicSettingData
 //选项设置中“主窗口设置”的数据
 struct MainWndSettingData : public PublicSettingData
 {
-    std::map<CommonDisplayItem, COLORREF> text_colors{};    //方字的颜色
+    std::map<CommonDisplayItem, COLORREF> text_colors{};    //文字的颜色
     bool swap_up_down{ false };     //交换上传和下载显示的位置
     bool hide_main_wnd_when_fullscreen;     //有程序全屏运行时隐藏悬浮窗
     bool m_always_on_top{ false };      //窗口置顶
@@ -239,6 +253,8 @@ struct MainWndSettingData : public PublicSettingData
     bool m_mouse_penetrate{ false };    //鼠标穿透
     bool m_alow_out_of_border{ false };     //是否允许悬浮窗超出屏幕边界
 
+    void FormSkinSettingData(const SkinSettingData& sking_setting_data);
+    SkinSettingData ToSkinSettingData() const;
 };
 
 //#define TASKBAR_COLOR_NUM 18      //任务栏窗口颜色数量
@@ -275,7 +291,7 @@ struct TaskBarSettingData : public PublicSettingData
     void SetTaskabrTransparent(bool transparent);
 
     CTaskbarItemOrderHelper item_order;
-    unsigned int m_tbar_display_item{ TDI_UP | TDI_DOWN };      //任务栏窗口显示的项目
+    DisplayItemSet display_item{ TDI_UP, TDI_DOWN };      //任务栏窗口显示的项目
     StringSet plugin_display_item;                  //任务窗口显示的插件项目
 
     bool show_taskbar_wnd_in_secondary_display{ false };    //是否在副显示器上显示任务栏窗口
@@ -320,8 +336,6 @@ struct GeneralSettingData
     bool check_update_when_start{ true };
     int update_source{};                    //更新源。0: GitHub; 1: Gitee
     bool auto_run{ false };
-    bool allow_skin_cover_font{ true };
-    bool allow_skin_cover_text{ true };
     bool show_notify_icon{ true };    //显示通知区域图标
 //通知消息
     bool traffic_tip_enable{ false };       //是否启用流量超出时提示
@@ -379,14 +393,6 @@ struct GeneralSettingData
 //定义监控时间间隔有效的最大值和最小值
 #define MONITOR_TIME_SPAN_MIN 200
 #define MONITOR_TIME_SPAN_MAX 30000
-
-enum class Alignment
-{
-    LEFT,       //左对齐
-    RIGHT,      //右对齐
-    CENTER,     //居中
-    SIDE        //两端对齐
-};
 
 //通过构造函数传递一个bool变量的引用，在构造时将其置为true，析构时置为false
 class CFlagLocker

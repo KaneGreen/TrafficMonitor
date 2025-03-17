@@ -6,6 +6,7 @@
 #include "SkinDlg.h"
 #include "afxdialogex.h"
 #include "SkinAutoAdaptSettingDlg.h"
+#include "SkinManager.h"
 
 
 // CSkinDlg 对话框
@@ -57,10 +58,13 @@ void CSkinDlg::DoDataExchange(CDataExchange* pDX)
 void CSkinDlg::ShowPreview()
 {
     //载入布局数据
-    wstring cfg_path{ theApp.m_skin_path + m_skins[m_skin_selected] + L"\\skin.xml" };
-    if (!CCommon::FileExist(cfg_path.c_str()))
-        cfg_path = theApp.m_skin_path + m_skins[m_skin_selected] + L"\\skin.ini";
-    m_skin_data.Load(cfg_path);
+    m_skin_data.Load(CSkinManager::Instance().GetSkinName(m_skin_selected));
+    //获取当前皮肤中用户更改字体
+    SkinSettingData cur_skin_data;
+    if (CSkinManager::Instance().GetSkinSettingDataByIndex(m_skin_selected, cur_skin_data))
+    {
+        m_skin_data.SetSettingData(cur_skin_data);
+    }
     //获取预览区大小
     m_view->SetSize(m_skin_data.GetPreviewInfo().width, m_skin_data.GetPreviewInfo().height);
     //刷新预览图
@@ -68,19 +72,19 @@ void CSkinDlg::ShowPreview()
 
     //显示皮肤作者
     SetDlgItemText(IDC_SKIN_INFO, CCommon::LoadText(IDS_SKIN_AUTHOUR, m_skin_data.GetSkinInfo().skin_author.c_str()));
-    //设置提示信息
-    bool cover_font_setting{ !m_skin_data.GetSkinInfo().font_info.name.IsEmpty() || (m_skin_data.GetSkinInfo().font_info.size >= MIN_FONT_SIZE && m_skin_data.GetSkinInfo().font_info.size <= MAX_FONT_SIZE) };
-    bool cover_str_setting{ !m_skin_data.GetSkinInfo().display_text.IsInvalid() };
-    cover_font_setting = cover_font_setting && theApp.m_general_data.allow_skin_cover_font;
-    cover_str_setting = cover_str_setting && theApp.m_general_data.allow_skin_cover_text;
-    if (cover_font_setting && cover_str_setting)
-        m_notify_static.SetWindowTextEx(CCommon::LoadText(IDS_OVERWRITE_FONT_TEXT_WARNING));
-    else if (cover_font_setting)
-        m_notify_static.SetWindowTextEx(CCommon::LoadText(IDS_OVERWRITE_FONT_WARNING));
-    else if (cover_str_setting)
-        m_notify_static.SetWindowTextEx(CCommon::LoadText(IDS_OVERWRITE_TEXT_WARNING));
-    else
-        m_notify_static.SetWindowTextEx(_T(""));
+    ////设置提示信息
+    //bool cover_font_setting{ !m_skin_data.GetSkinInfo().font_info.name.IsEmpty() || (m_skin_data.GetSkinInfo().font_info.size >= MIN_FONT_SIZE && m_skin_data.GetSkinInfo().font_info.size <= MAX_FONT_SIZE) };
+    //bool cover_str_setting{ !m_skin_data.GetSkinInfo().display_text.IsInvalid() };
+    //cover_font_setting = cover_font_setting && theApp.m_general_data.allow_skin_cover_font;
+    //cover_str_setting = cover_str_setting && theApp.m_general_data.allow_skin_cover_text;
+    //if (cover_font_setting && cover_str_setting)
+    //    m_notify_static.SetWindowTextEx(CCommon::LoadText(IDS_OVERWRITE_FONT_TEXT_WARNING));
+    //else if (cover_font_setting)
+    //    m_notify_static.SetWindowTextEx(CCommon::LoadText(IDS_OVERWRITE_FONT_WARNING));
+    //else if (cover_str_setting)
+    //    m_notify_static.SetWindowTextEx(CCommon::LoadText(IDS_OVERWRITE_TEXT_WARNING));
+    //else
+    //m_notify_static.SetWindowTextEx(_T(""));
 }
 
 
@@ -115,11 +119,8 @@ BOOL CSkinDlg::OnInitDialog()
     SetIcon(theApp.GetMenuIcon(IDI_SKIN), FALSE);		// 设置小图标
     //初始化选择框
     m_skin_list_box.SetItemHeight(0, DPI(18));
-    for (const auto& skin_path : m_skins)
+    for (const auto& skin_name : CSkinManager::Instance().GetSkinNames())
     {
-        wstring skin_name;
-        size_t index = skin_path.find_last_of(L'\\');
-        skin_name = skin_path.substr(index + 1);
         m_skin_list_box.AddString(skin_name.c_str());
     }
     m_skin_list_box.SetCurSel(m_skin_selected);
@@ -128,7 +129,6 @@ BOOL CSkinDlg::OnInitDialog()
     m_view->Create(NULL, NULL, WS_CHILD | WS_VISIBLE | WS_VSCROLL | WS_HSCROLL, CalculateViewRect(), this, 3000);
     m_view->InitialUpdate();
     m_view->SetSkinData(&m_skin_data);
-    m_view->SetFont(m_pFont);
     m_view->ShowWindow(SW_SHOW);
 
     //设置提示信息
@@ -185,15 +185,16 @@ afx_msg LRESULT CSkinDlg::OnLinkClicked(WPARAM wParam, LPARAM lParam)
 
 void CSkinDlg::OnBnClickedSkinAutoAdaptButton()
 {
-    CSkinAutoAdaptSettingDlg dlg(m_skins);
+    CSkinAutoAdaptSettingDlg dlg;
+    const auto& skins{ CSkinManager::Instance().GetSkinNames() };
     if (dlg.DoModal() == IDOK)
     {
         int dark_mode_skin = dlg.GetDarkModeSkin();
         int light_mode_skin = dlg.GetLightModeSkin();
-        if (dark_mode_skin >= 0 && dark_mode_skin < static_cast<int>(m_skins.size()))
-            theApp.m_cfg_data.skin_name_dark_mode = m_skins[dark_mode_skin];
-        if (light_mode_skin >= 0 && light_mode_skin < static_cast<int>(m_skins.size()))
-            theApp.m_cfg_data.skin_name_light_mode = m_skins[light_mode_skin];
+        if (dark_mode_skin >= 0 && dark_mode_skin < static_cast<int>(skins.size()))
+            theApp.m_cfg_data.skin_name_dark_mode = skins[dark_mode_skin];
+        if (light_mode_skin >= 0 && light_mode_skin < static_cast<int>(skins.size()))
+            theApp.m_cfg_data.skin_name_light_mode = skins[light_mode_skin];
     }
 }
 

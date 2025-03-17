@@ -14,12 +14,15 @@ public:
 
     static string UnicodeToStr(const wchar_t* wstr, bool utf8 = false);
 
+    static wstring AsciiToUnicode(const string& str);
+    static string AsciiToStr(const std::wstring& wstr);
+
     template<class T>
     static void StringNormalize(T& str)
     {
         if (str.empty()) return;
 
-        int size = str.size();  //字符串的长度
+        int size = static_cast<int>(str.size());  //字符串的长度
         if (size < 0) return;
         int index1 = 0;     //字符串中第1个不是空格或控制字符的位置
         int index2 = size - 1;  //字符串中最后一个不是空格或控制字符的位置
@@ -216,6 +219,7 @@ public:
     static wstring GetJsonValueSimple(const wstring& json_str, const wstring& name);
 
     //获取URL的内容
+    static bool GetURL(const wstring& url, std::string& result, const wstring& user_agent = wstring());
     static bool GetURL(const wstring& url, wstring& result, bool utf8 = false, const wstring& user_agent = wstring());
 
     //获取外网IP地址和IP归属地
@@ -257,8 +261,8 @@ public:
     template<class T>
     static double StringSimilarDegree_LD(const T& srcString, const T& matchString)
     {
-        int n = srcString.size();
-        int m = matchString.size();
+        int n = static_cast<int>(srcString.size());
+        int m = static_cast<int>(matchString.size());
         //int[, ] d = new int[n + 1, m + 1]; // matrix
         vector<vector<int>> d(n + 1, vector<int>(m + 1));
         int cost; // cost

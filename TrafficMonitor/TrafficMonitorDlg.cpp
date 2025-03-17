@@ -16,6 +16,7 @@
 #include "ClassicalTaskbarDlg.h"
 #include "Win11TaskbarDlg.h"
 #include "TaskbarHelper.h"
+#include "SkinManager.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -738,6 +739,7 @@ void CTrafficMonitorDlg::ApplySettings(COptionsDlg& optionsDlg)
         || theApp.m_taskbar_data.IsTaskbarTransparent() != optionsDlg.m_tab2_dlg.m_data.IsTaskbarTransparent()
         || theApp.m_taskbar_data.auto_set_background_color != optionsDlg.m_tab2_dlg.m_data.auto_set_background_color
         );
+    bool is_skin_data_changed = (theApp.m_main_wnd_data.ToSkinSettingData() != optionsDlg.m_tab1_dlg.m_data.ToSkinSettingData());
 
     theApp.m_main_wnd_data = optionsDlg.m_tab1_dlg.m_data;
     theApp.m_taskbar_data = optionsDlg.m_tab2_dlg.m_data;
@@ -842,6 +844,14 @@ void CTrafficMonitorDlg::ApplySettings(COptionsDlg& optionsDlg)
             DeleteNotifyIcon();
     }
 
+    if (is_skin_data_changed)
+    {
+        //将当前皮肤设置保存到SkinManager
+        SkinSettingData skin_data = theApp.m_main_wnd_data.ToSkinSettingData();
+        CSkinManager::Instance().AddSkinSettingData(theApp.m_cfg_data.m_skin_name, skin_data);
+        CSkinManager::Instance().Save();
+    }
+
     theApp.SaveConfig();
     theApp.SaveGlobalConfig();
 }
@@ -858,14 +868,12 @@ void CTrafficMonitorDlg::SetItemPosition()
     }
 }
 
-void CTrafficMonitorDlg::LoadSkinLayout()
+bool CTrafficMonitorDlg::LoadSkinLayout()
 {
-    wstring skin_cfg_path{ theApp.m_skin_path + m_skins[m_skin_selected] + L"\\skin.xml" };
-    if (!CCommon::FileExist(skin_cfg_path.c_str()))
-        skin_cfg_path = theApp.m_skin_path + m_skins[m_skin_selected] + L"\\skin.ini";
-    m_skin.Load(skin_cfg_path);
+    bool rtn = m_skin.Load(CSkinManager::Instance().GetSkinName(m_skin_selected));
     if (m_skin.GetLayoutInfo().no_label)        //如果皮肤布局不显示文本，则不允许交换上传和下载的位置，因为上传和下载的位置已经固定在皮肤中了
         theApp.m_main_wnd_data.swap_up_down = false;
+    return rtn;
 }
 
 void CTrafficMonitorDlg::LoadBackGroundImage()
@@ -885,9 +893,9 @@ void CTrafficMonitorDlg::LoadBackGroundImage()
     CImage img_mask;
     //载入掩码图片
     if (theApp.m_cfg_data.m_show_more_info)
-        img_tmp.Load((theApp.m_skin_path + m_skins[m_skin_selected] + BACKGROUND_MASK_L).c_str());
+        img_tmp.Load((theApp.m_skin_path + CSkinManager::Instance().GetSkinName(m_skin_selected) + BACKGROUND_MASK_L).c_str());
     else
-        img_tmp.Load((theApp.m_skin_path + m_skins[m_skin_selected] + BACKGROUND_MASK_S).c_str());
+        img_tmp.Load((theApp.m_skin_path + CSkinManager::Instance().GetSkinName(m_skin_selected) + BACKGROUND_MASK_S).c_str());
     CRgn wnd_rgn;
     if (!img_tmp.IsNull())
     {
@@ -913,9 +921,7 @@ void CTrafficMonitorDlg::LoadBackGroundImage()
 
 void CTrafficMonitorDlg::SetTextFont()
 {
-    if (m_font.m_hObject)   //如果m_font已经关联了一个字体资源对象，则释放它
-        m_font.DeleteObject();
-    theApp.m_main_wnd_data.font.Create(m_font, theApp.GetDpi());
+    m_skin.SetSettingData(theApp.m_main_wnd_data.ToSkinSettingData());
 }
 
 bool CTrafficMonitorDlg::IsTaskbarWndValid() const
@@ -927,14 +933,14 @@ void CTrafficMonitorDlg::TaskbarShowHideItem(DisplayItem type)
 {
     if (IsTaskbarWndValid())
     {
-        bool show = (theApp.m_taskbar_data.m_tbar_display_item & type);
+        bool show = (theApp.m_taskbar_data.display_item.Contains(type));
         if (show)
         {
-            theApp.m_taskbar_data.m_tbar_display_item &= ~type;
+            theApp.m_taskbar_data.display_item.Remove(type);
         }
         else
         {
-            theApp.m_taskbar_data.m_tbar_display_item |= type;
+            theApp.m_taskbar_data.display_item.Add(type);
         }
         //CloseTaskBarWnd();
         //OpenTaskBarWnd();
@@ -956,57 +962,24 @@ void CTrafficMonitorDlg::CheckClickedItem(CPoint point)
     }
 }
 
-int CTrafficMonitorDlg::FindSkinIndex(const wstring& skin_name)
-{
-    int skin_selected = 0;
-    for (size_t i{}; i < m_skins.size(); i++)
-    {
-        if (m_skins[i] == skin_name)
-            skin_selected = static_cast<int>(i);
-    }
-    return skin_selected;
-}
-
 void CTrafficMonitorDlg::ApplySkin(int skin_index)
 {
-    if (skin_index < 0 || skin_index >= static_cast<int>(m_skins.size()))
+    if (skin_index < 0 || skin_index >= CSkinManager::Instance().Size())
         return;
     m_skin_selected = skin_index;
-    theApp.m_cfg_data.m_skin_name = m_skins[m_skin_selected];
+    theApp.m_cfg_data.m_skin_name = CSkinManager::Instance().GetSkinName(m_skin_selected);
     //获取皮肤布局
     LoadSkinLayout();
     //载入背景图片
     LoadBackGroundImage();
-    //获取皮肤的文字颜色
-    theApp.m_main_wnd_data.specify_each_item_color = m_skin.GetSkinInfo().specify_each_item_color;
-    int i{};
-    for (const auto& item : theApp.m_plugins.AllDisplayItemsWithPlugins())
+    //获取皮肤设置
+    SkinSettingData cur_skin_data;
+    if (!CSkinManager::Instance().GetSkinSettingDataByIndex(m_skin_selected, cur_skin_data))
     {
-        theApp.m_main_wnd_data.text_colors[item] = m_skin.GetSkinInfo().TextColor(i);
-        i++;
+        CSkinManager::SkinSettingDataFronSkin(cur_skin_data, m_skin);
     }
-    //SetTextColor();
-    //获取皮肤的字体
-    if (theApp.m_general_data.allow_skin_cover_font)
-    {
-        if (!m_skin.GetSkinInfo().font_info.name.IsEmpty())
-        {
-            theApp.m_main_wnd_data.font.name = m_skin.GetSkinInfo().font_info.name;
-            theApp.m_main_wnd_data.font.bold = m_skin.GetSkinInfo().font_info.bold;
-            theApp.m_main_wnd_data.font.italic = m_skin.GetSkinInfo().font_info.italic;
-            theApp.m_main_wnd_data.font.underline = m_skin.GetSkinInfo().font_info.underline;
-            theApp.m_main_wnd_data.font.strike_out = m_skin.GetSkinInfo().font_info.strike_out;
-        }
-        if (m_skin.GetSkinInfo().font_info.size >= MIN_FONT_SIZE && m_skin.GetSkinInfo().font_info.size <= MAX_FONT_SIZE)
-            theApp.m_main_wnd_data.font.size = m_skin.GetSkinInfo().font_info.size;
-        SetTextFont();
-    }
-    //获取项目的显示文本
-    bool cover_str_setting{ !m_skin.GetSkinInfo().display_text.IsInvalid() };
-    if (theApp.m_general_data.allow_skin_cover_text && !m_skin.GetLayoutInfo().no_label && cover_str_setting)
-    {
-        theApp.m_main_wnd_data.disp_str = m_skin.GetSkinInfo().display_text;
-    }
+    theApp.m_main_wnd_data.FormSkinSettingData(cur_skin_data);
+    SetTextFont();
     SetItemPosition();
     Invalidate(FALSE);      //更换皮肤后立即刷新窗口信息
     //重新设置WS_EX_LAYERED样式，以解决在png皮肤和bmp皮肤之间切换时显示不正常的问题
@@ -1016,7 +989,6 @@ void CTrafficMonitorDlg::ApplySkin(int skin_index)
     SetTransparency();
 
     theApp.SaveConfig();
-
 }
 
 bool CTrafficMonitorDlg::IsTemperatureNeeded() const
@@ -1077,18 +1049,18 @@ BOOL CTrafficMonitorDlg::OnInitDialog()
     //theApp.UpdateTaskbarWndMenu();
 
     //初始化皮肤
-    CCommon::GetFiles((theApp.m_skin_path + L"\\*").c_str(), [&](const wstring& file_name)
-        {
-            wstring file_name1 = L'\\' + file_name;
-            if (CCommon::IsFolder(theApp.m_skin_path + file_name1))
-                m_skins.push_back(file_name1);
-        });
-    if (m_skins.empty())
-        m_skins.push_back(L"");
-    m_skin_selected = FindSkinIndex(theApp.m_cfg_data.m_skin_name);
+    CSkinManager::Instance().Init();
+    m_skin_selected = CSkinManager::Instance().FindSkinIndex(theApp.m_cfg_data.m_skin_name);
 
     //根据当前选择的皮肤获取布局数据
-    LoadSkinLayout();
+    if (LoadSkinLayout())
+    {
+        //从SkinManager中获取当前皮肤的设置
+        SkinSettingData cur_skin_data;
+        CSkinManager::SkinSettingDataFronSkin(cur_skin_data, m_skin);   //获取皮肤的默认设置
+        CSkinManager::Instance().GetSkinSettingDataByIndex(m_skin_selected, cur_skin_data); //获取皮肤的用户保存的数据
+        theApp.m_main_wnd_data.FormSkinSettingData(cur_skin_data);
+    }
 
     //设置窗口透明度
     SetTransparency();
@@ -1857,7 +1829,7 @@ void CTrafficMonitorDlg::OnTimer(UINT_PTR nIDEvent)
             //根据深色/浅色模式自动切换皮肤
             if (theApp.m_win_version.IsWindows10OrLater() && theApp.m_cfg_data.skin_auto_adapt)
             {
-                int skin_index = FindSkinIndex(light_mode ? theApp.m_cfg_data.skin_name_light_mode : theApp.m_cfg_data.skin_name_dark_mode);
+                int skin_index = CSkinManager::Instance().FindSkinIndex(light_mode ? theApp.m_cfg_data.skin_name_light_mode : theApp.m_cfg_data.skin_name_dark_mode);
                 ApplySkin(skin_index);
             }
         }
@@ -2445,16 +2417,16 @@ void CTrafficMonitorDlg::OnShowCpuMemory2()
     // TODO: 在此添加命令处理程序代码
     if (IsTaskbarWndValid())
     {
-        bool show_cpu_memory = ((theApp.m_taskbar_data.m_tbar_display_item & TDI_CPU) || (theApp.m_taskbar_data.m_tbar_display_item & TDI_MEMORY));
+        bool show_cpu_memory = (theApp.m_taskbar_data.display_item.Contains(TDI_CPU) || theApp.m_taskbar_data.display_item.Contains(TDI_MEMORY));
         if (show_cpu_memory)
         {
-            theApp.m_taskbar_data.m_tbar_display_item &= ~TDI_CPU;
-            theApp.m_taskbar_data.m_tbar_display_item &= ~TDI_MEMORY;
+            theApp.m_taskbar_data.display_item.Remove(TDI_CPU);
+            theApp.m_taskbar_data.display_item.Remove(TDI_MEMORY);
         }
         else
         {
-            theApp.m_taskbar_data.m_tbar_display_item |= TDI_CPU;
-            theApp.m_taskbar_data.m_tbar_display_item |= TDI_MEMORY;
+            theApp.m_taskbar_data.display_item.Add(TDI_CPU);
+            theApp.m_taskbar_data.display_item.Add(TDI_MEMORY);
         }
         //theApp.m_cfg_data.m_tbar_show_cpu_memory = !theApp.m_cfg_data.m_tbar_show_cpu_memory;
         //切换显示CPU和内存利用率时，删除任务栏窗口，再重新显示
@@ -2575,9 +2547,7 @@ void CTrafficMonitorDlg::OnChangeSkin()
     // TODO: 在此添加命令处理程序代码
     CSkinDlg skinDlg;
     //初始化CSkinDlg对象的数据
-    skinDlg.m_skins = m_skins;
     skinDlg.m_skin_selected = m_skin_selected;
-    skinDlg.m_pFont = &m_font;
     if (skinDlg.DoModal() == IDOK)
     {
         ApplySkin(skinDlg.m_skin_selected);
@@ -2718,16 +2688,16 @@ void CTrafficMonitorDlg::OnShowNetSpeed()
     // TODO: 在此添加命令处理程序代码
     if (IsTaskbarWndValid())
     {
-        bool show_net_speed = ((theApp.m_taskbar_data.m_tbar_display_item & TDI_UP) || (theApp.m_taskbar_data.m_tbar_display_item & TDI_DOWN));
+        bool show_net_speed = (theApp.m_taskbar_data.display_item.Contains(TDI_UP) || theApp.m_taskbar_data.display_item.Contains(TDI_DOWN));
         if (show_net_speed)
         {
-            theApp.m_taskbar_data.m_tbar_display_item &= ~TDI_UP;
-            theApp.m_taskbar_data.m_tbar_display_item &= ~TDI_DOWN;
+            theApp.m_taskbar_data.display_item.Remove(TDI_UP);
+            theApp.m_taskbar_data.display_item.Remove(TDI_DOWN);
         }
         else
         {
-            theApp.m_taskbar_data.m_tbar_display_item |= TDI_UP;
-            theApp.m_taskbar_data.m_tbar_display_item |= TDI_DOWN;
+            theApp.m_taskbar_data.display_item.Add(TDI_UP);
+            theApp.m_taskbar_data.display_item.Add(TDI_DOWN);
         }
         //CloseTaskBarWnd();
         //OpenTaskBarWnd();
@@ -2761,7 +2731,7 @@ void CTrafficMonitorDlg::OnPaint()
     CPaintDC dc(this); // device context for painting
                        // TODO: 在此处添加消息处理程序代码
                        // 不为绘图消息调用 CDialog::OnPaint()
-    m_skin.DrawInfo(&dc, theApp.m_cfg_data.m_show_more_info, m_font);
+    m_skin.DrawInfo(&dc, theApp.m_cfg_data.m_show_more_info);
 }
 
 
@@ -2892,12 +2862,12 @@ void CTrafficMonitorDlg::OnDisplaySettings()
     // TODO: 在此添加命令处理程序代码
     CSetItemOrderDlg dlg;
     dlg.SetItemOrder(theApp.m_taskbar_data.item_order.GetItemOrderConst());
-    dlg.SetDisplayItem(theApp.m_taskbar_data.m_tbar_display_item);
+    dlg.SetDisplayItem(theApp.m_taskbar_data.display_item);
     dlg.SetPluginDisplayItem(theApp.m_taskbar_data.plugin_display_item);
     if (dlg.DoModal() == IDOK)
     {
         theApp.m_taskbar_data.item_order.SetOrder(dlg.GetItemOrder());
-        theApp.m_taskbar_data.m_tbar_display_item = dlg.GetDisplayItem();
+        theApp.m_taskbar_data.display_item = dlg.GetDisplayItem();
         theApp.m_taskbar_data.plugin_display_item = dlg.GetPluginDisplayItem();
         //CloseTaskBarWnd();
         //OpenTaskBarWnd();
@@ -2981,7 +2951,7 @@ void CTrafficMonitorDlg::OnPluginOptionsTaksbar()
         if (plugin != nullptr)
         {
             //显示插件的选项设置
-            auto rtn = plugin->ShowOptionsDialog(GetSafeHwnd());
+            auto rtn = plugin->ShowOptionsDialog(m_tBarDlg->GetSafeHwnd());
             if (rtn == ITMPlugin::OR_OPTION_CHANGED)    //选项设置有更改，重新打开任务栏窗口
             {
                 //CloseTaskBarWnd();

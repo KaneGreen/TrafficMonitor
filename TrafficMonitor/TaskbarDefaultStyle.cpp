@@ -1,6 +1,6 @@
 ﻿#include "stdafx.h"
 #include "TaskbarDefaultStyle.h"
-#include "IniHelper.h"
+#include "SettingsHelper.h"
 #include "TrafficMonitor.h"
 #include "WindowsSettingHelper.h"
 
@@ -15,12 +15,15 @@ CTaskbarDefaultStyle::~CTaskbarDefaultStyle()
 
 void CTaskbarDefaultStyle::LoadConfig()
 {
-	CIniHelper ini{ theApp.m_config_path };
-	for (int i = 0; i < TASKBAR_DEFAULT_STYLE_NUM; i++)
+    CSettingsHelper ini;
+    for (int i = 0; i < TASKBAR_DEFAULT_STYLE_NUM; i++)
 	{
         COLORREF default_text_color = (TASKBAR_DEFAULT_LIGHT_STYLE(i) ? RGB(0, 0, 0) : RGB(255, 255, 255));
-        COLORREF default_back_color = (TASKBAR_DEFAULT_LIGHT_STYLE(i) ? RGB(210, 210, 211) : 0);
-        COLORREF default_transparent_color = (TASKBAR_DEFAULT_LIGHT_STYLE(i) ? RGB(210, 210, 211) : 0);
+        COLORREF darkmode_default_back_color = 0;
+        if (theApp.m_win_version.IsWindows8Or8point1())
+            darkmode_default_back_color = RGB(0, 0, 1);
+        COLORREF default_back_color = (TASKBAR_DEFAULT_LIGHT_STYLE(i) ? RGB(210, 210, 211) : darkmode_default_back_color);
+        COLORREF default_transparent_color = (TASKBAR_DEFAULT_LIGHT_STYLE(i) ? RGB(210, 210, 211) : darkmode_default_back_color);
         COLORREF default_status_bar_color = (TASKBAR_DEFAULT_LIGHT_STYLE(i) ? RGB(165, 165, 165) : 0x005A5A5A);
         wchar_t buff[64];
         swprintf_s(buff, L"default%d_", i + 1);
@@ -53,9 +56,8 @@ void CTaskbarDefaultStyle::LoadConfig()
 
 void CTaskbarDefaultStyle::SaveConfig() const
 {
-
-	CIniHelper ini{ theApp.m_config_path };
-	for (int i = 0; i < TASKBAR_DEFAULT_STYLE_NUM; i++)
+    CSettingsHelper ini;
+    for (int i = 0; i < TASKBAR_DEFAULT_STYLE_NUM; i++)
 	{
 		wchar_t buff[64];
 		swprintf_s(buff, L"default%d_", i + 1);

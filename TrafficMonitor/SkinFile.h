@@ -11,8 +11,12 @@ public:
     ~CSkinFile();
 
 
-    //从文件载入皮肤信息
-    void Load(const wstring& file_path);
+    //
+    /**
+     * @brief  从文件载入皮肤信息
+     * @param skin_name 皮肤名称
+     */
+    bool Load(const wstring& skin_name);
 
     //皮肤信息
     struct SkinInfo
@@ -32,6 +36,15 @@ public:
             else
                 return 0;
         }
+    };
+
+    //对齐方式
+    enum class Alignment
+    {
+        LEFT,       //左对齐
+        RIGHT,      //右对齐
+        CENTER,     //居中
+        SIDE        //两端对齐
     };
 
     //皮肤中每一项的布局信息
@@ -92,15 +105,20 @@ public:
     bool IsPNG() const { return m_is_png; }
     void SetAlpha(int alpha);       //设置主窗口的不透明度，alpha:0~255，仅当使用png背景时有效
 
+    void SetSettingData(const SkinSettingData& setting_data);
+
     //绘制预览图
     //pDC: 绘图的CDC
     //rect: 绘图区域
     void DrawPreview(CDC* pDC, CRect rect);
 
     //绘制主界面
-    void DrawInfo(CDC* pDC, bool show_more_info, CFont& font);
+    void DrawInfo(CDC* pDC, bool show_more_info);
 
     static string GetDisplayItemXmlNodeName(DisplayItem display_item);
+
+    //获取此皮肤上所有显示项目
+    void GetSkinDisplayItems(std::set<CommonDisplayItem>& skin_all_items) const;
 
 private:
     void LoadFromXml(const wstring& file_path);     //从xml文件读取皮肤数据
@@ -121,7 +139,7 @@ private:
     static void DrawSkinText(IDrawCommon& drawer, DrawStr draw_str, CRect rect, COLORREF color, Alignment align);
 
     //绘制主界面中除背景图外所有显示项目
-    void DrawItemsInfo(IDrawCommon& drawer, Layout& layout, CFont& font);
+    void DrawItemsInfo(IDrawCommon& drawer, Layout& layout, CFont& font) const;
 
 private:
     SkinInfo m_skin_info;
@@ -136,4 +154,5 @@ private:
     Gdiplus::Image* m_background_png_s{};
     Gdiplus::Image* m_background_png_l{};
     int m_alpha{ 255 };     //不透明度，仅当背景为png时有效
+    SkinSettingData m_setting_data;
 };

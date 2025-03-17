@@ -39,6 +39,8 @@ public:
     enum { IDD = IDD_TRAFFICMONITOR_DIALOG };
 #endif
 
+    const CSkinFile& GetCurSkin() const { return m_skin; }
+
 protected:
     virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV 支持
 
@@ -92,8 +94,6 @@ protected:
     CSkinFile m_skin;
     CommonDisplayItem m_clicked_item;           //鼠标点击的项目
 
-    CFont m_font;           //字体
-
     int m_restart_cnt{ -1 };    //重新初始化次数
     unsigned int m_timer_cnt{};     //定时器触发次数（自程序启动以来的秒数）
     unsigned int m_taskbar_timer_cnt{0}; //适用于TaskBarDlg的定时器触发次数（自程序启动以来的秒数）
@@ -104,7 +104,6 @@ protected:
 
     static unsigned int m_WM_TASKBARCREATED;    //任务栏重启消息
 
-    vector<wstring> m_skins;    //储存皮肤文件的路径
     int m_skin_selected{};      //选择的皮肤序号
 
     SYSTEMTIME m_start_time;    //程序启动时的时间
@@ -169,7 +168,7 @@ protected:
     void ApplySettings(COptionsDlg& optionsDlg);
 
     void SetItemPosition();     //设置显示的4个项目的位置
-    void LoadSkinLayout();      //从当前皮肤获取布局数据
+    bool LoadSkinLayout();      //从当前皮肤获取布局数据
 
     void LoadBackGroundImage();
     void SetTextFont();
@@ -180,8 +179,6 @@ protected:
 
     //判断一个点在哪个显示项目的区域内，并保存到m_clicked_item
     void CheckClickedItem(CPoint point);
-
-    int FindSkinIndex(const wstring& skin_name);
 
     //应用一个皮肤
     void ApplySkin(int skin_index);

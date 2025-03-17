@@ -46,12 +46,9 @@ void CTaskBarSettingsDlg::DrawStaticColor()
     //CCommon::FillStaticColor(m_back_color_static, m_data.back_color);
     if (m_data.specify_each_item_color)
     {
-        int color_num{};
-#ifdef WITHOUT_TEMPERATURE
-        color_num = 8;
-#else
-        color_num = 16;
-#endif
+        int color_num{ static_cast<int>(m_data.text_colors.size()) * 2 };
+        if (color_num > 16)
+            color_num = 16;
         int i{};
         m_text_color_static.SetColorNum(color_num);
         for (const auto& item : m_data.text_colors)
@@ -274,6 +271,7 @@ BEGIN_MESSAGE_MAP(CTaskBarSettingsDlg, CTabDlg)
     ON_BN_CLICKED(IDC_TASKBAR_WND_IN_SECONDARY_DISPLAY_CHECK, &CTaskBarSettingsDlg::OnBnClickedTaskbarWndInSecondaryDisplayCheck)
     ON_CBN_SELCHANGE(IDC_DISPLAY_TO_SHOW_TASKBAR_WND_COMBO, &CTaskBarSettingsDlg::OnCbnSelchangeDisplayToShowTaskbarWndCombo)
     ON_BN_CLICKED(IDC_USAGE_GRAPH_FOLLOW_SYSTEM_CHECK, &CTaskBarSettingsDlg::OnBnClickedUsageGraphFollowSystemCheck)
+    ON_EN_CHANGE(IDC_FONT_SIZE_EDIT1, &CTaskBarSettingsDlg::OnEnChangeFontSizeEdit1)
 END_MESSAGE_MAP()
 
 
@@ -853,12 +851,12 @@ void CTaskBarSettingsDlg::OnBnClickedSetOrderButton()
     // TODO: 在此添加控件通知处理程序代码
     CSetItemOrderDlg dlg;
     dlg.SetItemOrder(m_data.item_order.GetItemOrderConst());
-    dlg.SetDisplayItem(m_data.m_tbar_display_item);
+    dlg.SetDisplayItem(m_data.display_item);
     dlg.SetPluginDisplayItem(m_data.plugin_display_item);
     if (dlg.DoModal() == IDOK)
     {
         m_data.item_order.SetOrder(dlg.GetItemOrder());
-        m_data.m_tbar_display_item = dlg.GetDisplayItem();
+        m_data.display_item = dlg.GetDisplayItem();
         m_data.plugin_display_item = dlg.GetPluginDisplayItem();
     }
 }
@@ -985,4 +983,10 @@ void CTaskBarSettingsDlg::OnBnClickedUsageGraphFollowSystemCheck()
 {
     m_data.graph_color_following_system = (IsDlgButtonChecked(IDC_USAGE_GRAPH_FOLLOW_SYSTEM_CHECK) != FALSE);
     DrawStaticColor();
+}
+
+
+void CTaskBarSettingsDlg::OnEnChangeFontSizeEdit1()
+{
+    m_data.font.size = m_font_size_edit.GetValue();
 }

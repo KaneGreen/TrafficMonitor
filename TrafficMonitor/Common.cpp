@@ -38,6 +38,24 @@ string CCommon::UnicodeToStr(const wchar_t* wstr, bool utf8)
     return result;
 }
 
+wstring CCommon::AsciiToUnicode(const string& str)
+{
+    std::wstring result;
+    result.resize(str.size());
+    for (size_t i{}; i < str.size(); i++)
+        result[i] = str[i];
+    return result;
+}
+
+string CCommon::AsciiToStr(const std::wstring& wstr)
+{
+    std::string result;
+    result.resize(wstr.size());
+    for (size_t i{}; i < wstr.size(); i++)
+        result[i] = static_cast<char>(wstr[i]);
+    return result;
+}
+
 bool CCommon::GetFileContent(const wchar_t* file_path, string& contents_buff, bool binary /*= true*/)
 {
     std::ifstream file{ file_path, (binary ? std::ios::binary : std::ios::in) };
@@ -237,7 +255,10 @@ CString CCommon::FreqToString(float freq, const PublicSettingData& cfg)
     if (freq < 0)
         str_val = _T("--");
     else
-        str_val.Format(_T("%.2f GHz"), freq);
+        str_val.Format(_T("%.2f"), freq);
+    if (cfg.separate_value_unit_with_space)
+        str_val += _T(' ');
+    str_val += _T("GHz");
     return str_val;
 }
 //CString CCommon::KBytesToString(unsigned int kb_size)
@@ -641,7 +662,7 @@ wstring CCommon::GetJsonValueSimple(const wstring& json_str, const wstring& name
     return result;
 }
 
-bool CCommon::GetURL(const wstring& url, wstring& result, bool utf8, const wstring& user_agent)
+bool CCommon::GetURL(const wstring& url, std::string& result, const wstring& user_agent)
 {
     bool succeed{ false };
     CInternetSession* pSession{};
@@ -660,7 +681,7 @@ bool CCommon::GetURL(const wstring& url, wstring& result, bool utf8, const wstri
             {
                 content += data;
             }
-            result = StrToUnicode((const char*)content.GetString(), utf8);
+            result = std::string((const char*)content.GetString());
             succeed = true;
         }
         pfile->Close();
@@ -687,6 +708,17 @@ bool CCommon::GetURL(const wstring& url, wstring& result, bool utf8, const wstri
         SAFE_DELETE(pSession);
     }
     SAFE_DELETE(pSession);
+    return succeed;
+}
+
+bool CCommon::GetURL(const wstring& url, wstring& result, bool utf8, const wstring& user_agent)
+{
+    std::string str_result;
+    bool succeed = GetURL(url, str_result, user_agent);
+    if (succeed)
+    {
+        result = CCommon::StrToUnicode(str_result.c_str(), utf8);
+    }
     return succeed;
 }
 
@@ -915,8 +947,17 @@ void CCommon::SetColorMode(ColorMode mode)
     switch (mode)
     {
     case ColorMode::Default:
-        CTrafficMonitorApp::self->m_taskbar_data.dft_back_color = 0;
-        CTrafficMonitorApp::self->m_taskbar_data.dft_transparent_color = 0;
+        //Win8/8.1下背景色和透明色不使用纯黑色
+        if (theApp.m_win_version.IsWindows8Or8point1())
+        {
+            CTrafficMonitorApp::self->m_taskbar_data.dft_back_color = RGB(0, 0, 1);
+            CTrafficMonitorApp::self->m_taskbar_data.dft_transparent_color = RGB(0, 0, 1);
+        }
+        else
+        {
+            CTrafficMonitorApp::self->m_taskbar_data.dft_back_color = 0;
+            CTrafficMonitorApp::self->m_taskbar_data.dft_transparent_color = 0;
+        }
         CTrafficMonitorApp::self->m_taskbar_data.dft_status_bar_color = 0x005A5A5A;
         CTrafficMonitorApp::self->m_taskbar_data.dft_text_colors = 0x00ffffffU;
         CTrafficMonitorApp::self->m_cfg_data.m_dft_notify_icon = 0;

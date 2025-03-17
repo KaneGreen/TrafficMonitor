@@ -68,6 +68,11 @@ bool CPluginManagerDlg::InitializeControls()
         { CtrlTextInfo::L4, IDC_PLUGIN_INFO_BUTTON, CtrlTextInfo::W32 },
         { CtrlTextInfo::L3, IDC_OPTINS_BUTTON, CtrlTextInfo::W32 }
     });
+    RepositionTextBasedControls({
+        { CtrlTextInfo::L4, IDC_PLUGIN_DOWNLOAD_STATIC },
+        { CtrlTextInfo::L3, IDC_PLUGIN_DEV_GUID_STATIC },
+        { CtrlTextInfo::L2, IDC_OPEN_PLUGIN_DIR_STATIC }
+    });
     return true;
 }
 
@@ -100,12 +105,14 @@ BOOL CPluginManagerDlg::OnInitDialog()
     CRect rect;
     m_list_ctrl.GetClientRect(rect);
     m_list_ctrl.SetExtendedStyle(LVS_EX_FULLROWSELECT | LVS_EX_LABELTIP);
-    int width0, width1, width2;
-    width0 = width1 = rect.Width() / 3;
-    width2 = rect.Width() - width0 - width1 - theApp.DPI(20) - 1;
-    m_list_ctrl.InsertColumn(0, CCommon::LoadText(IDS_FILE_NAME), LVCFMT_LEFT, width0);
-    m_list_ctrl.InsertColumn(1, CCommon::LoadText(IDS_PLUGIN_NAME), LVCFMT_LEFT, width1);
-    m_list_ctrl.InsertColumn(2, CCommon::LoadText(IDS_STATUS), LVCFMT_LEFT, width2);
+    int width0, width1, width2, width3;
+    width0 = width1 = rect.Width() * 3 / 10;
+    width3 = rect.Width() * 2 / 10;
+    width2 = rect.Width() - width0 - width1 - width3 - theApp.DPI(20) - 1;
+    m_list_ctrl.InsertColumn(COL_FILE_NAME, CCommon::LoadText(IDS_FILE_NAME), LVCFMT_LEFT, width0);
+    m_list_ctrl.InsertColumn(COL_NAME, CCommon::LoadText(IDS_PLUGIN_NAME), LVCFMT_LEFT, width1);
+    m_list_ctrl.InsertColumn(COL_VERSION, CCommon::LoadText(IDS_VERSION), LVCFMT_LEFT, width2);
+    m_list_ctrl.InsertColumn(COL_STATUS, CCommon::LoadText(IDS_STATUS), LVCFMT_LEFT, width3);
 
     //添加图标
     int item_num = theApp.m_plugins.GetPlugins().size();
@@ -155,11 +162,33 @@ BOOL CPluginManagerDlg::OnInitDialog()
         }
         int index = m_list_ctrl.GetItemCount();
         m_list_ctrl.InsertItem(index, file_name.c_str(), m_list_ctrl.GetItemCount());
-        m_list_ctrl.SetItemText(index, 1, plugin.Property(ITMPlugin::TMI_NAME).c_str());
-        m_list_ctrl.SetItemText(index, 2, status);
+        m_list_ctrl.SetItemText(index, COL_NAME, plugin.Property(ITMPlugin::TMI_NAME).c_str());
+        if (plugin.state == CPluginManager::PluginState::PS_SUCCEED)
+        {
+            //如果插件有更新，在版本号后添加更新信息
+            PluginVersion cur_version(plugin.Property(ITMPlugin::TMI_VERSION));
+            PluginVersion latest_version(theApp.m_plugin_update.GetPluginLatestVersions(file_name));
+            if (cur_version < latest_version)
+            {
+                std::wstring update_info = theApp.m_str_table.LoadTextFormat(IDS_PLUGIN_NEW_VERSION_INFO, { latest_version.GetVersionWString() });
+                std::wstring version_text = plugin.Property(ITMPlugin::TMI_VERSION);
+                version_text += L" (";
+                version_text += update_info;
+                version_text += L')';
+                m_list_ctrl.SetItemText(index, COL_VERSION, version_text.c_str());
+            }
+            else
+            {
+                m_list_ctrl.SetItemText(index, COL_VERSION, plugin.Property(ITMPlugin::TMI_VERSION).c_str());
+            }
+        }
+        m_list_ctrl.SetItemText(index, COL_STATUS, status);
     }
 
-    m_plugin_download_lnk.SetURL(L"https://github.com/zhongyang219/TrafficMonitorPlugins/blob/main/download/plugin_download.md");
+    if (theApp.m_general_data.update_source == 1)   //更新源为Gitee，跳转到Gitee的链接
+        m_plugin_download_lnk.SetURL(L"https://gitee.com/zhongyang219/TrafficMonitorPlugins/blob/main/download/plugin_download.md");
+    else //更新源为Github
+        m_plugin_download_lnk.SetURL(L"https://github.com/zhongyang219/TrafficMonitorPlugins/blob/main/download/plugin_download.md");
     m_plugin_dev_guide_lnk.SetURL(L"https://github.com/zhongyang219/TrafficMonitor/wiki/%E6%8F%92%E4%BB%B6%E5%BC%80%E5%8F%91%E6%8C%87%E5%8D%97");
     m_open_plugin_dir_lnk.SetLinkIsURL(false);
 

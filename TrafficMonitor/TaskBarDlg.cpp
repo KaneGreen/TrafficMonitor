@@ -52,12 +52,14 @@ BEGIN_MESSAGE_MAP(CTaskBarDlg, CDialogEx)
     ON_WM_LBUTTONUP()
     ON_MESSAGE(WM_EXITMENULOOP, &CTaskBarDlg::OnExitmenuloop)
     ON_MESSAGE(WM_TABLET_QUERYSYSTEMGESTURESTATUS, &CTaskBarDlg::OnTabletQuerysystemgesturestatus)
+    ON_WM_MOUSEWHEEL()
 END_MESSAGE_MAP()
 
 // CTaskBarDlg 消息处理程序
 
 void CTaskBarDlg::ShowInfo(CDC* pDC)
 {
+    m_item_rects.clear();   //绘图前先清除所有项目的矩形区域
     HWND current_hwnd = this->GetSafeHwnd();
     if (current_hwnd == NULL || !IsWindow(this->GetSafeHwnd()))
         return;
@@ -364,7 +366,7 @@ void CTaskBarDlg::DrawDisplayItem(IDrawCommon& drawer, DisplayItem type, CRect r
     //绘制标签
     if (label_width > 0)
     {
-        wstring str_label = theApp.m_taskbar_data.disp_str.Get(type);
+        wstring str_label = theApp.m_taskbar_data.disp_str.GetConst(type);
         //if (theApp.m_taskbar_data.swap_up_down)
         //{
         //    if (type == TDI_UP)
@@ -372,14 +374,14 @@ void CTaskBarDlg::DrawDisplayItem(IDrawCommon& drawer, DisplayItem type, CRect r
         //    else if (type == TDI_DOWN)
         //        str_label = theApp.m_taskbar_data.disp_str.Get(TDI_UP);
         //}
-        drawer.DrawWindowText(rect_label, str_label.c_str(), label_color, (vertical ? Alignment::CENTER : Alignment::LEFT));
+        drawer.DrawWindowText(rect_label, str_label.c_str(), label_color, (vertical ? IDrawCommon::Alignment::CENTER : IDrawCommon::Alignment::LEFT));
     }
 
     //绘制数值
     CString str_value;
-    Alignment value_alignment{ theApp.m_taskbar_data.value_right_align ? Alignment::RIGHT : Alignment::LEFT };      //数值的对齐方式
+    IDrawCommon::Alignment value_alignment{ theApp.m_taskbar_data.value_right_align ? IDrawCommon::Alignment::RIGHT : IDrawCommon::Alignment::LEFT };      //数值的对齐方式
     if (vertical)
-        value_alignment = Alignment::CENTER;
+        value_alignment = IDrawCommon::Alignment::CENTER;
     //绘制上传或下载速度
     if (type == TDI_UP || type == TDI_DOWN || type == TDI_TOTAL_SPEED)
     {
@@ -519,6 +521,10 @@ void CTaskBarDlg::DrawPluginItem(IDrawCommon& drawer, IPluginItem* item, CRect r
         value_text_color = theApp.m_taskbar_data.text_colors.begin()->second.label;
     }
 
+    if (plugin != nullptr && plugin->GetAPIVersion() >= 2)
+    {
+        plugin->OnExtenedInfo(ITMPlugin::EI_DRAW_TASKBAR_WND, L"1");
+    }
     if (item->IsCustomDraw())
     {
         //根据背景色的亮度判断深色还是浅色模式
@@ -529,7 +535,6 @@ void CTaskBarDlg::DrawPluginItem(IDrawCommon& drawer, IPluginItem* item, CRect r
         {
             plugin->OnExtenedInfo(ITMPlugin::EI_LABEL_TEXT_COLOR, std::to_wstring(label_text_color).c_str());
             plugin->OnExtenedInfo(ITMPlugin::EI_VALUE_TEXT_COLOR, std::to_wstring(value_text_color).c_str());
-            plugin->OnExtenedInfo(ITMPlugin::EI_DRAW_TASKBAR_WND, L"1");
         }
         drawer.SetTextColor(value_text_color);
         //需要rtti
@@ -570,13 +575,13 @@ void CTaskBarDlg::DrawPluginItem(IDrawCommon& drawer, IPluginItem* item, CRect r
             }
         }
         //画标签
-        CString lable_text = theApp.m_taskbar_data.disp_str.Get(item).c_str();
+        CString lable_text = theApp.m_taskbar_data.disp_str.GetConst(item).c_str();
         lable_text += L' ';
-        drawer.DrawWindowText(rect_label, lable_text, label_text_color, (vertical ? Alignment::CENTER : Alignment::LEFT));
+        drawer.DrawWindowText(rect_label, lable_text, label_text_color, (vertical ? IDrawCommon::Alignment::CENTER : IDrawCommon::Alignment::LEFT));
         //画数值
-        Alignment value_alignment{ theApp.m_taskbar_data.value_right_align ? Alignment::RIGHT : Alignment::LEFT };      //数值的对齐方式
+        IDrawCommon::Alignment value_alignment{ theApp.m_taskbar_data.value_right_align ? IDrawCommon::Alignment::RIGHT : IDrawCommon::Alignment::LEFT };      //数值的对齐方式
         if (vertical)
-            value_alignment = Alignment::CENTER;
+            value_alignment = IDrawCommon::Alignment::CENTER;
         drawer.DrawWindowText(rect_value, item->GetItemValueText(), value_text_color, value_alignment);
     }
 }
@@ -800,13 +805,13 @@ CString CTaskBarDlg::GetMouseTipsInfo()
     if (!IsItemShow(TDI_UP))
     {
         temp.Format(_T("\r\n%s: %s/s"), CCommon::LoadText(IDS_UPLOAD),
-            CCommon::DataSizeToString(theApp.m_out_speed, theApp.m_main_wnd_data));
+            CCommon::DataSizeToString(theApp.m_out_speed, theApp.m_taskbar_data));
         tip_info += temp;
     }
     if (!IsItemShow(TDI_DOWN))
     {
         temp.Format(_T("\r\n%s: %s/s"), CCommon::LoadText(IDS_DOWNLOAD),
-            CCommon::DataSizeToString(theApp.m_in_speed, theApp.m_main_wnd_data));
+            CCommon::DataSizeToString(theApp.m_in_speed, theApp.m_taskbar_data));
         tip_info += temp;
     }
     if (!IsItemShow(TDI_CPU))
@@ -903,8 +908,8 @@ void CTaskBarDlg::ApplySettings()
 void CTaskBarDlg::CalculateWindowSize()
 {
     bool horizontal_arrange = theApp.m_taskbar_data.horizontal_arrange && m_taskbar_on_top_or_bottom;
-    if (theApp.m_taskbar_data.m_tbar_display_item == 0 && theApp.m_taskbar_data.plugin_display_item.data().empty())
-        theApp.m_taskbar_data.m_tbar_display_item |= TDI_UP;        //至少显示一项
+    if (theApp.m_taskbar_data.display_item.IsEmpty() && theApp.m_taskbar_data.plugin_display_item.data().empty())
+        theApp.m_taskbar_data.display_item.Add(TDI_UP);        //至少显示一项
 
     m_item_widths.clear();
     //显示项目的宽度
@@ -927,7 +932,7 @@ void CTaskBarDlg::CalculateWindowSize()
                 }
                 else
                 {
-                    CString lable_text = theApp.m_taskbar_data.disp_str.Get(plugin).c_str();
+                    CString lable_text = theApp.m_taskbar_data.disp_str.GetConst(plugin).c_str();
                     if (!lable_text.IsEmpty())
                         lable_text += L' ';
                     label_width = m_pDC->GetTextExtent(lable_text).cx;
@@ -936,7 +941,7 @@ void CTaskBarDlg::CalculateWindowSize()
         }
         else
         {
-            item_widths[*iter].label_width = m_pDC->GetTextExtent(theApp.m_taskbar_data.disp_str.Get(*iter).c_str()).cx;
+            item_widths[*iter].label_width = m_pDC->GetTextExtent(theApp.m_taskbar_data.disp_str.GetConst(*iter).c_str()).cx;
         }
     }
 
@@ -1128,17 +1133,17 @@ void CTaskBarDlg::UpdateToolTips()
 
 bool CTaskBarDlg::IsItemShow(DisplayItem item)
 {
-    return (theApp.m_taskbar_data.m_tbar_display_item & item);
+    return (theApp.m_taskbar_data.display_item.Contains(item));
 }
 
 bool CTaskBarDlg::IsShowCpuMemory()
 {
-    return ((theApp.m_taskbar_data.m_tbar_display_item & TDI_CPU) || (theApp.m_taskbar_data.m_tbar_display_item & TDI_MEMORY));
+    return (theApp.m_taskbar_data.display_item.Contains(TDI_CPU) || theApp.m_taskbar_data.display_item.Contains(TDI_MEMORY));
 }
 
 bool CTaskBarDlg::IsShowNetSpeed()
 {
-    return ((theApp.m_taskbar_data.m_tbar_display_item & TDI_UP) || (theApp.m_taskbar_data.m_tbar_display_item & TDI_DOWN));
+    return (theApp.m_taskbar_data.display_item.Contains(TDI_UP) || theApp.m_taskbar_data.display_item.Contains(TDI_DOWN));
 }
 
 bool CTaskBarDlg::IsTaskbarCloseToIconEnable(bool taskbar_wnd_on_left)
@@ -1262,14 +1267,15 @@ void CTaskBarDlg::OnRButtonUp(UINT nFlags, CPoint point)
         if (plugin != nullptr)
         {
             //将右键菜单中插件菜单的显示文本改为插件名
-            pMenu->ModifyMenu(15, MF_BYPOSITION, 15, plugin->GetInfo(ITMPlugin::TMI_NAME));
+            const int PLUGIN_ITEM_INDEX = pMenu->GetMenuItemCount() - 1;    //插件项目为菜单中的最后一项
+            pMenu->ModifyMenu(PLUGIN_ITEM_INDEX, MF_BYPOSITION, PLUGIN_ITEM_INDEX, plugin->GetInfo(ITMPlugin::TMI_NAME));
             //获取插件图标
             HICON plugin_icon{};
             if (plugin->GetAPIVersion() >= 5)
                 plugin_icon = (HICON)plugin->GetPluginIcon();
             //设置插件图标
             if (plugin_icon != nullptr)
-                CMenuIcon::AddIconToMenuItem(pMenu->GetSafeHmenu(), 15, TRUE, plugin_icon);
+                CMenuIcon::AddIconToMenuItem(pMenu->GetSafeHmenu(), PLUGIN_ITEM_INDEX, TRUE, plugin_icon);
         }
         //更新插件子菜单
         theApp.UpdatePluginMenu(&theApp.m_taskbar_menu_plugin_sub_menu, plugin, 2);
@@ -1631,4 +1637,32 @@ afx_msg LRESULT CTaskBarDlg::OnExitmenuloop(WPARAM wParam, LPARAM lParam)
 afx_msg LRESULT CTaskBarDlg::OnTabletQuerysystemgesturestatus(WPARAM wParam, LPARAM lParam)
 {
     return 0;
+}
+
+
+BOOL CTaskBarDlg::OnMouseWheel(UINT nFlags, short zDelta, CPoint pt)
+{
+    if (zDelta >= 120 || zDelta <= -120)
+    {
+        CPoint point = pt;
+        ScreenToClient(&point);
+        ITMPlugin* plugin{};
+        bool is_plugin_item_clicked = (CheckClickedItem(point) && m_clicked_item.is_plugin && m_clicked_item.plugin_item != nullptr);
+        if (is_plugin_item_clicked)
+        {
+            plugin = theApp.m_plugins.GetPluginByItem(m_clicked_item.plugin_item);
+            if (plugin != nullptr && plugin->GetAPIVersion() >= 3)
+            {
+                IPluginItem::MouseEventType type;
+                if (zDelta > 0)
+                    type = IPluginItem::MT_WHEEL_UP;
+                else
+                    type = IPluginItem::MT_WHEEL_DOWN;
+                if (m_clicked_item.plugin_item->OnMouseEvent(type, point.x, point.y, (void*)GetSafeHwnd(), IPluginItem::MF_TASKBAR_WND) != 0)
+                    return TRUE;
+            }
+        }
+    }
+
+    return CDialogEx::OnMouseWheel(nFlags, zDelta, pt);
 }

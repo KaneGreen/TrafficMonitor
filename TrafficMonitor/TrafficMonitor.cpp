@@ -12,6 +12,8 @@
 #include "auto_start_helper.h"
 #include "AppAlreadyRuningDlg.h"
 #include "WindowsSettingHelper.h"
+#include "SkinManager.h"
+#include "SettingsHelper.h"
 #ifndef DISABLE_WINDOWS_WEB_EXPERIENCE_DETECTOR
 #include "winrt/base.h"
 #endif
@@ -62,12 +64,12 @@ void CTrafficMonitorApp::LoadLanguageConfig()
 
 void CTrafficMonitorApp::LoadConfig()
 {
-    CIniHelper ini{ m_config_path };
+    CSettingsHelper ini;
 
     //常规设置
     m_general_data.check_update_when_start = ini.GetBool(_T("general"), _T("check_update_when_start"), true);
-    m_general_data.allow_skin_cover_font = ini.GetBool(_T("general"), _T("allow_skin_cover_font"), true);
-    m_general_data.allow_skin_cover_text = ini.GetBool(_T("general"), _T("allow_skin_cover_text"), true);
+    //m_general_data.allow_skin_cover_font = ini.GetBool(_T("general"), _T("allow_skin_cover_font"), true);
+    //m_general_data.allow_skin_cover_text = ini.GetBool(_T("general"), _T("allow_skin_cover_text"), true);
     m_general_data.show_all_interface = ini.GetBool(L"general", L"show_all_interface", false);
     bool is_chinese_language{ m_str_table.IsSimplifiedChinese() };     //当前语言是否为简体中文
     m_general_data.update_source = ini.GetInt(L"general", L"update_source", is_chinese_language ? 1 : 0);   //如果当前语言为简体，则默认更新源为Gitee，否则为GitHub
@@ -108,17 +110,12 @@ void CTrafficMonitorApp::LoadConfig()
     m_cfg_data.m_position_y = ini.GetInt(_T("config"), _T("position_y"), -1);
     m_cfg_data.m_auto_select = ini.GetBool(_T("connection"), _T("auto_select"), true);
     m_cfg_data.m_select_all = ini.GetBool(_T("connection"), _T("select_all"), false);
-    //判断皮肤是否存在
-    std::vector<wstring> skin_files;
-    CCommon::GetFiles((theApp.m_skin_path + L"\\*").c_str(), skin_files);
-    bool is_skin_exist = (!skin_files.empty());
-    ini.LoadMainWndColors(_T("config"), _T("text_color"), m_main_wnd_data.text_colors, (is_skin_exist ? 16384 : 16777215)); //根据皮肤是否存在来设置默认的文本颜色，皮肤文件不存在时文本颜色默认为白色
-    m_main_wnd_data.specify_each_item_color = ini.GetBool(_T("config"), _T("specify_each_item_color"), false);
     m_cfg_data.m_hide_main_window = ini.GetBool(_T("config"), _T("hide_main_window"), false);
     m_cfg_data.m_connection_name = CCommon::UnicodeToStr(ini.GetString(L"connection", L"connection_name", L"").c_str());
     m_cfg_data.m_skin_name = ini.GetString(_T("config"), _T("skin_selected"), _T(""));
     if (m_cfg_data.m_skin_name.substr(0, 8) == L".\\skins\\")       //如果读取到的皮肤名称前面有".\\skins\\"，则把它删除。（用于和前一个版本保持兼容性）
         m_cfg_data.m_skin_name = m_cfg_data.m_skin_name.substr(7);
+    CSkinManager::SkinNameNormalize(m_cfg_data.m_skin_name);
 
     m_cfg_data.skin_auto_adapt = ini.GetBool(L"skins", L"skin_auto_adapt", false);
     m_cfg_data.skin_name_dark_mode = ini.GetString(L"skins", L"skin_name_dark_mode", L"");
@@ -131,30 +128,15 @@ void CTrafficMonitorApp::LoadConfig()
     m_main_wnd_data.swap_up_down = ini.GetBool(_T("config"), _T("swap_up_down"), false);
     m_main_wnd_data.hide_main_wnd_when_fullscreen = ini.GetBool(_T("config"), _T("hide_main_wnd_when_fullscreen"), true);
 
-    FontInfo default_font{};
-    default_font.name = m_str_table.GetLanguageInfo().default_font_name.c_str();
-    default_font.size = 10;
-    ini.LoadFontData(_T("config"), m_main_wnd_data.font, default_font);
-    //m_main_wnd_data.font.name = ini.GetString(_T("config"), _T("font_name"), CCommon::LoadText(IDS_MICROSOFT_YAHEI)).c_str();
-    //m_main_wnd_data.font.size = ini.GetInt(_T("config"), _T("font_size"), 10);
-
-    //载入显示文本设置
-    m_main_wnd_data.disp_str.Get(TDI_UP) = ini.GetString(_T("config"), L"up_string", CCommon::LoadText(IDS_UPLOAD_DISP, _T(": $")));
-    m_main_wnd_data.disp_str.Get(TDI_DOWN) = ini.GetString(L"config", L"down_string", CCommon::LoadText(IDS_DOWNLOAD_DISP, _T(": $")));
-    m_main_wnd_data.disp_str.Get(TDI_TOTAL_SPEED) = ini.GetString(L"config", L"total_speed_string", _T("↑↓: $"));
-    m_main_wnd_data.disp_str.Get(TDI_CPU) = ini.GetString(L"config", L"cpu_string", L"CPU: $");
-    m_main_wnd_data.disp_str.Get(TDI_CPU_FREQ) = ini.GetString(L"config", L"cpu_freq_string", CCommon::LoadText(IDS_CPU_FREQ, _T(": $")));
-    m_main_wnd_data.disp_str.Get(TDI_MEMORY) = ini.GetString(L"config", L"memory_string", CCommon::LoadText(IDS_MEMORY_DISP, _T(": $")));
-    m_main_wnd_data.disp_str.Get(TDI_GPU_USAGE) = ini.GetString(L"config", L"gpu_string", CCommon::LoadText(IDS_GPU_DISP, _T(": $")));
-    m_main_wnd_data.disp_str.Get(TDI_CPU_TEMP) = ini.GetString(L"config", L"cpu_temp_string", L"CPU: $");
-    m_main_wnd_data.disp_str.Get(TDI_GPU_TEMP) = ini.GetString(L"config", L"gpu_temp_string", CCommon::LoadText(IDS_GPU_DISP, _T(": $")));
-    m_main_wnd_data.disp_str.Get(TDI_HDD_TEMP) = ini.GetString(L"config", L"hdd_temp_string", CCommon::LoadText(IDS_HDD_DISP, _T(": $")));
-    m_main_wnd_data.disp_str.Get(TDI_MAIN_BOARD_TEMP) = ini.GetString(L"config", L"main_board_temp_string", CCommon::LoadText(IDS_MAINBOARD_DISP, _T(": $")));
-    m_main_wnd_data.disp_str.Get(TDI_HDD_USAGE) = ini.GetString(L"config", L"hdd_string", CCommon::LoadText(IDS_HDD_DISP, _T(": $")));
-    m_main_wnd_data.disp_str.Get(TDI_TODAY_TRAFFIC) = ini.GetString(L"config", L"today_traffic_string", CCommon::LoadText(IDS_TRAFFIC_USED, _T(": $")));
-
-    //载入插件项目的显示文本设置
-    ini.LoadPluginDisplayStr(true);
+    //由于主窗口的文本颜色、字体、显示文本设置不再从配置文件读取，这些设置保存在每个皮肤的单独设置中，因此这里只将它们初始化为固定的值
+    m_main_wnd_data.text_colors[TDI_UP] = RGB(255, 255, 255);
+    m_main_wnd_data.specify_each_item_color = false;
+    m_main_wnd_data.font.name = m_str_table.GetLanguageInfo().default_font_name.c_str();
+    m_main_wnd_data.font.size = 10;
+    m_main_wnd_data.disp_str.Get(TDI_UP) = CCommon::LoadText(IDS_UPLOAD_DISP, L": ");
+    m_main_wnd_data.disp_str.Get(TDI_DOWN) = CCommon::LoadText(IDS_DOWNLOAD_DISP, L": ");
+    m_main_wnd_data.disp_str.Get(TDI_CPU) = L"CPU: ";
+    m_main_wnd_data.disp_str.Get(TDI_MEMORY) = CCommon::LoadText(IDS_MEMORY_DISP, _T(": "));
 
     m_main_wnd_data.speed_short_mode = ini.GetBool(_T("config"), _T("speed_short_mode"), false);
     m_main_wnd_data.separate_value_unit_with_space = ini.GetBool(_T("config"), _T("separate_value_unit_with_space"), true);
@@ -196,35 +178,35 @@ void CTrafficMonitorApp::LoadConfig()
     ini.LoadTaskbarWndColors(_T("task_bar"), _T("task_bar_text_color"), m_taskbar_data.text_colors, m_taskbar_data.dft_text_colors);
     m_taskbar_data.specify_each_item_color = ini.GetBool(L"task_bar", L"specify_each_item_color", false);
     //m_cfg_data.m_tbar_show_cpu_memory = ini.GetBool(_T("task_bar"), _T("task_bar_show_cpu_memory"), false);
-    m_taskbar_data.m_tbar_display_item = ini.GetInt(L"task_bar", L"tbar_display_item", TDI_UP | TDI_DOWN);
+    m_taskbar_data.display_item.FromInt(ini.GetInt(L"task_bar", L"tbar_display_item", DisplayItemSet{ TDI_UP, TDI_DOWN }.ToInt()));
     m_taskbar_data.show_taskbar_wnd_in_secondary_display = ini.GetBool(L"task_bar", L"show_taskbar_wnd_in_secondary_display", false);
     m_taskbar_data.secondary_display_index = ini.GetInt(L"task_bar", L"secondary_display_index", 0);
 
     //不含温度监控的版本，不显示温度监控相关项目
 #ifdef WITHOUT_TEMPERATURE
-    m_taskbar_data.m_tbar_display_item &= ~TDI_GPU_USAGE;
-    m_taskbar_data.m_tbar_display_item &= ~TDI_CPU_TEMP;
-    m_taskbar_data.m_tbar_display_item &= ~TDI_GPU_TEMP;
-    m_taskbar_data.m_tbar_display_item &= ~TDI_HDD_TEMP;
-    m_taskbar_data.m_tbar_display_item &= ~TDI_MAIN_BOARD_TEMP;
-    m_taskbar_data.m_tbar_display_item &= ~TDI_HDD_USAGE;
+    m_taskbar_data.display_item.Remove(TDI_GPU_USAGE);
+    m_taskbar_data.display_item.Remove(TDI_CPU_TEMP);
+    m_taskbar_data.display_item.Remove(TDI_GPU_TEMP);
+    m_taskbar_data.display_item.Remove(TDI_HDD_TEMP);
+    m_taskbar_data.display_item.Remove(TDI_MAIN_BOARD_TEMP);
+    m_taskbar_data.display_item.Remove(TDI_HDD_USAGE);
 #endif
 
     //如果选项设置中关闭了某个硬件监控，则不显示对应的温度监控相关项目
     if (!m_general_data.IsHardwareEnable(HI_CPU))
-        m_taskbar_data.m_tbar_display_item &= ~TDI_CPU_TEMP;
+        m_taskbar_data.display_item.Remove(TDI_CPU_TEMP);
     if (!m_general_data.IsHardwareEnable(HI_GPU))
     {
-        m_taskbar_data.m_tbar_display_item &= ~TDI_GPU_USAGE;
-        m_taskbar_data.m_tbar_display_item &= ~TDI_GPU_TEMP;
+        m_taskbar_data.display_item.Remove(TDI_GPU_USAGE);
+        m_taskbar_data.display_item.Remove(TDI_GPU_TEMP);
     }
     if (!m_general_data.IsHardwareEnable(HI_HDD))
     {
-        m_taskbar_data.m_tbar_display_item &= ~TDI_HDD_TEMP;
-        m_taskbar_data.m_tbar_display_item &= ~TDI_HDD_USAGE;
+        m_taskbar_data.display_item.Remove(TDI_HDD_TEMP);
+        m_taskbar_data.display_item.Remove(TDI_HDD_USAGE);
     }
     if (!m_general_data.IsHardwareEnable(HI_MBD))
-        m_taskbar_data.m_tbar_display_item &= ~TDI_MAIN_BOARD_TEMP;
+        m_taskbar_data.display_item.Remove(TDI_MAIN_BOARD_TEMP);
 
     //m_taskbar_data.swap_up_down = ini.GetBool(_T("task_bar"), _T("task_bar_swap_up_down"), false);
 
@@ -234,27 +216,14 @@ void CTrafficMonitorApp::LoadConfig()
         m_taskbar_data.text_colors.begin()->second.label = m_taskbar_data.dft_text_colors;
     }
 
-    //m_taskbar_data.font.name = ini.GetString(_T("task_bar"), _T("tack_bar_font_name"), CCommon::LoadText(IDS_MICROSOFT_YAHEI)).c_str();
-    //m_taskbar_data.font.size = ini.GetInt(_T("task_bar"), _T("tack_bar_font_size"), 9);
-    default_font = FontInfo{};
+    FontInfo default_font;
     default_font.name = m_str_table.GetLanguageInfo().default_font_name.c_str();
     default_font.size = 9;
     ini.LoadFontData(_T("task_bar"), m_taskbar_data.font, default_font);
 
-    m_taskbar_data.disp_str.Get(TDI_UP) = ini.GetString(L"task_bar", L"up_string", L"↑: $");
-    m_taskbar_data.disp_str.Get(TDI_DOWN) = ini.GetString(L"task_bar", L"down_string", L"↓: $");
-    m_taskbar_data.disp_str.Get(TDI_TOTAL_SPEED) = ini.GetString(L"task_bar", L"total_speed_string", L"↑↓: $");
-    m_taskbar_data.disp_str.Get(TDI_CPU) = ini.GetString(L"task_bar", L"cpu_string", L"CPU: $");
-    m_taskbar_data.disp_str.Get(TDI_MEMORY) = ini.GetString(L"task_bar", L"memory_string", CCommon::LoadText(IDS_MEMORY_DISP, _T(": $")));
-    m_taskbar_data.disp_str.Get(TDI_GPU_USAGE) = ini.GetString(L"task_bar", L"gpu_string", CCommon::LoadText(IDS_GPU_DISP, _T(": $")));
-    m_taskbar_data.disp_str.Get(TDI_CPU_TEMP) = ini.GetString(L"task_bar", L"cpu_temp_string", L"CPU: $");
-    m_taskbar_data.disp_str.Get(TDI_GPU_TEMP) = ini.GetString(L"task_bar", L"gpu_temp_string", CCommon::LoadText(IDS_GPU_DISP, _T(": ")));
-    m_taskbar_data.disp_str.Get(TDI_HDD_TEMP) = ini.GetString(L"task_bar", L"hdd_temp_string", CCommon::LoadText(IDS_HDD_DISP, _T(": ")));
-    m_taskbar_data.disp_str.Get(TDI_MAIN_BOARD_TEMP) = ini.GetString(L"task_bar", L"main_board_temp_string", CCommon::LoadText(IDS_MAINBOARD_DISP, _T(": ")));
-    m_taskbar_data.disp_str.Get(TDI_HDD_USAGE) = ini.GetString(L"task_bar", L"hdd_string", CCommon::LoadText(IDS_HDD_DISP, _T(": ")));
-    m_taskbar_data.disp_str.Get(TDI_CPU_FREQ) = ini.GetString(L"task_bar", L"cpu_freq_string", CCommon::LoadText(IDS_CPU_FREQ, _T(": $")));
-    m_taskbar_data.disp_str.Get(TDI_TODAY_TRAFFIC) = ini.GetString(L"task_bar", L"today_traffic_string", CCommon::LoadText(IDS_TRAFFIC_USED, _T(": $")));
-    ini.LoadPluginDisplayStr(false);
+    //载入显示文本设置
+    ini.LoadDisplayStr(L"task_bar", m_taskbar_data.disp_str, false);
+    ini.LoadPluginDisplayStr(L"plugin_display_str_taskbar_window", m_taskbar_data.disp_str, false);
 
     m_taskbar_data.tbar_wnd_on_left = ini.GetBool(_T("task_bar"), _T("task_bar_wnd_on_left"), false);
     m_taskbar_data.speed_short_mode = ini.GetBool(_T("task_bar"), _T("task_bar_speed_short_mode"), false);
@@ -331,12 +300,12 @@ void CTrafficMonitorApp::LoadConfig()
 
 void CTrafficMonitorApp::SaveConfig()
 {
-    CIniHelper ini{ m_config_path };
+    CSettingsHelper ini;
 
     //常规设置
     ini.WriteBool(_T("general"), _T("check_update_when_start"), m_general_data.check_update_when_start);
-    ini.WriteBool(_T("general"), _T("allow_skin_cover_font"), m_general_data.allow_skin_cover_font);
-    ini.WriteBool(_T("general"), _T("allow_skin_cover_text"), m_general_data.allow_skin_cover_text);
+    //ini.WriteBool(_T("general"), _T("allow_skin_cover_font"), m_general_data.allow_skin_cover_font);
+    //ini.WriteBool(_T("general"), _T("allow_skin_cover_text"), m_general_data.allow_skin_cover_text);
     ini.WriteInt(_T("general"), _T("language"), static_cast<int>(m_general_data.language));
     ini.WriteInt(L"general", L"update_source", m_general_data.update_source);
     ini.WriteBool(L"general", L"show_all_interface", m_general_data.show_all_interface);
@@ -359,8 +328,8 @@ void CTrafficMonitorApp::SaveConfig()
     ini.WriteInt(L"config", L"position_y", m_cfg_data.m_position_y);
     ini.WriteBool(L"connection", L"auto_select", m_cfg_data.m_auto_select);
     ini.WriteBool(L"connection", L"select_all", m_cfg_data.m_select_all);
-    ini.SaveMainWndColors(L"config", L"text_color", m_main_wnd_data.text_colors);
-    ini.WriteBool(_T("config"), _T("specify_each_item_color"), m_main_wnd_data.specify_each_item_color);
+    //ini.SaveMainWndColors(L"config", L"text_color", m_main_wnd_data.text_colors);
+    //ini.WriteBool(_T("config"), _T("specify_each_item_color"), m_main_wnd_data.specify_each_item_color);
     ini.WriteInt(L"config", L"hide_main_window", m_cfg_data.m_hide_main_window);
     ini.WriteString(L"connection", L"connection_name", CCommon::StrToUnicode(m_cfg_data.m_connection_name.c_str()));
     ini.WriteString(_T("config"), _T("skin_selected"), m_cfg_data.m_skin_name.c_str());
@@ -372,25 +341,13 @@ void CTrafficMonitorApp::SaveConfig()
     ini.WriteInt(L"config", L"notify_icon_selected", m_cfg_data.m_notify_icon_selected);
     ini.WriteBool(L"config", L"notify_icon_auto_adapt", m_cfg_data.m_notify_icon_auto_adapt);
 
-    ini.SaveFontData(L"config", m_main_wnd_data.font);
+    //ini.SaveFontData(L"config", m_main_wnd_data.font);
 
     ini.WriteBool(L"config", L"swap_up_down", m_main_wnd_data.swap_up_down);
     ini.WriteBool(L"config", L"hide_main_wnd_when_fullscreen", m_main_wnd_data.hide_main_wnd_when_fullscreen);
 
-    ini.WriteString(_T("config"), _T("up_string"), m_main_wnd_data.disp_str.Get(TDI_UP));
-    ini.WriteString(_T("config"), _T("down_string"), m_main_wnd_data.disp_str.Get(TDI_DOWN));
-    ini.WriteString(_T("config"), _T("total_speed_string"), m_main_wnd_data.disp_str.Get(TDI_TOTAL_SPEED));
-    ini.WriteString(_T("config"), _T("cpu_string"), m_main_wnd_data.disp_str.Get(TDI_CPU));
-    ini.WriteString(_T("config"), _T("memory_string"), m_main_wnd_data.disp_str.Get(TDI_MEMORY));
-    ini.WriteString(_T("config"), _T("gpu_string"), m_main_wnd_data.disp_str.Get(TDI_GPU_USAGE));
-    ini.WriteString(_T("config"), _T("cpu_temp_string"), m_main_wnd_data.disp_str.Get(TDI_CPU_TEMP));
-    ini.WriteString(_T("config"), _T("cpu_freq_string"), m_main_wnd_data.disp_str.Get(TDI_CPU_FREQ));
-    ini.WriteString(_T("config"), _T("gpu_temp_string"), m_main_wnd_data.disp_str.Get(TDI_GPU_TEMP));
-    ini.WriteString(_T("config"), _T("hdd_temp_string"), m_main_wnd_data.disp_str.Get(TDI_HDD_TEMP));
-    ini.WriteString(_T("config"), _T("main_board_temp_string"), m_main_wnd_data.disp_str.Get(TDI_MAIN_BOARD_TEMP));
-    ini.WriteString(_T("config"), _T("hdd_string"), m_main_wnd_data.disp_str.Get(TDI_HDD_USAGE));
-    ini.WriteString(_T("config"), _T("today_traffic_string"), m_main_wnd_data.disp_str.Get(TDI_TODAY_TRAFFIC));
-    ini.SavePluginDisplayStr(true);
+    //ini.SaveDisplayStr(L"config", m_main_wnd_data.disp_str);
+    //ini.SavePluginDisplayStr(L"plugin_display_str_main_window", m_main_wnd_data.disp_str);
 
     ini.WriteBool(L"config", L"speed_short_mode", m_main_wnd_data.speed_short_mode);
     ini.WriteBool(L"config", L"separate_value_unit_with_space", m_main_wnd_data.separate_value_unit_with_space);
@@ -426,26 +383,14 @@ void CTrafficMonitorApp::SaveConfig()
     ini.SaveTaskbarWndColors(L"task_bar", L"task_bar_text_color", m_taskbar_data.text_colors);
     ini.WriteBool(L"task_bar", L"specify_each_item_color", m_taskbar_data.specify_each_item_color);
     //ini.WriteBool(L"task_bar", L"task_bar_show_cpu_memory", m_cfg_data.m_tbar_show_cpu_memory);
-    ini.WriteInt(L"task_bar", L"tbar_display_item", m_taskbar_data.m_tbar_display_item);
+    ini.WriteInt(L"task_bar", L"tbar_display_item", m_taskbar_data.display_item.ToInt());
     ini.SaveFontData(L"task_bar", m_taskbar_data.font);
     //ini.WriteBool(L"task_bar", L"task_bar_swap_up_down", m_taskbar_data.swap_up_down);
     ini.WriteBool(L"task_bar", L"show_taskbar_wnd_in_secondary_display", m_taskbar_data.show_taskbar_wnd_in_secondary_display);
     ini.WriteInt(L"task_bar", L"secondary_display_index", m_taskbar_data.secondary_display_index);
 
-    ini.WriteString(_T("task_bar"), _T("up_string"), m_taskbar_data.disp_str.Get(TDI_UP));
-    ini.WriteString(_T("task_bar"), _T("down_string"), m_taskbar_data.disp_str.Get(TDI_DOWN));
-    ini.WriteString(_T("task_bar"), _T("total_speed_string"), m_taskbar_data.disp_str.Get(TDI_TOTAL_SPEED));
-    ini.WriteString(_T("task_bar"), _T("cpu_string"), m_taskbar_data.disp_str.Get(TDI_CPU));
-    ini.WriteString(_T("task_bar"), _T("memory_string"), m_taskbar_data.disp_str.Get(TDI_MEMORY));
-    ini.WriteString(_T("task_bar"), _T("gpu_string"), m_taskbar_data.disp_str.Get(TDI_GPU_USAGE));
-    ini.WriteString(_T("task_bar"), _T("cpu_temp_string"), m_taskbar_data.disp_str.Get(TDI_CPU_TEMP));
-    ini.WriteString(_T("task_bar"), _T("cpu_freq_string"), m_taskbar_data.disp_str.Get(TDI_CPU_FREQ));
-    ini.WriteString(_T("task_bar"), _T("gpu_temp_string"), m_taskbar_data.disp_str.Get(TDI_GPU_TEMP));
-    ini.WriteString(_T("task_bar"), _T("hdd_temp_string"), m_taskbar_data.disp_str.Get(TDI_HDD_TEMP));
-    ini.WriteString(_T("task_bar"), _T("main_board_temp_string"), m_taskbar_data.disp_str.Get(TDI_MAIN_BOARD_TEMP));
-    ini.WriteString(_T("task_bar"), _T("hdd_string"), m_taskbar_data.disp_str.Get(TDI_HDD_USAGE));
-    ini.WriteString(_T("task_bar"), _T("today_traffic_string"), m_taskbar_data.disp_str.Get(TDI_TODAY_TRAFFIC));
-    ini.SavePluginDisplayStr(false);
+    ini.SaveDisplayStr(L"task_bar", m_taskbar_data.disp_str);
+    ini.SavePluginDisplayStr(L"plugin_display_str_taskbar_window", m_taskbar_data.disp_str);
 
     ini.WriteBool(L"task_bar", L"task_bar_wnd_on_left", m_taskbar_data.tbar_wnd_on_left);
     ini.WriteBool(L"task_bar", L"task_bar_wnd_snap", m_taskbar_data.tbar_wnd_snap);
@@ -674,7 +619,14 @@ void CTrafficMonitorApp::CheckUpdateInThread(bool message)
 UINT CTrafficMonitorApp::CheckUpdateThreadFunc(LPVOID lpParam)
 {
     CCommon::SetThreadLanguage(theApp.m_general_data.language);     //设置线程语言
+#ifndef _DEBUG      //DEBUG下不在启动时检查更新
     theApp.CheckUpdate(lpParam);        //检查更新
+#endif
+    //检测插件更新
+    if (!theApp.m_plugins.GetPlugins().empty())
+    {
+        theApp.m_plugin_update.CheckForUpdate();
+    }
     return 0;
 }
 
@@ -902,7 +854,8 @@ void CTrafficMonitorApp::InitMenuResourse()
         CMenuIcon::AddIconToMenuItem(menu.GetSafeHmenu(), ID_SHOW_TASK_BAR_WND, FALSE, GetMenuIcon(IDI_CLOSE));
         CMenuIcon::AddIconToMenuItem(menu.GetSafeHmenu(), ID_OPEN_TASK_MANAGER, FALSE, GetMenuIcon(IDI_TASK_MANAGER));
         CMenuIcon::AddIconToMenuItem(menu.GetSafeHmenu(), ID_OPTIONS2, FALSE, GetMenuIcon(IDI_SETTINGS));
-        CMenuIcon::AddIconToMenuItem(menu.GetSubMenu(0)->GetSafeHmenu(), 12, TRUE, GetMenuIcon(IDI_HELP));
+        CMenuIcon::AddIconToMenuItem(menu.GetSafeHmenu(), ID_PLUGIN_MANAGE, FALSE, GetMenuIcon(IDI_PLUGINS));
+        CMenuIcon::AddIconToMenuItem(menu.GetSubMenu(0)->GetSafeHmenu(), 13, TRUE, GetMenuIcon(IDI_HELP));
         CMenuIcon::AddIconToMenuItem(menu.GetSafeHmenu(), ID_HELP, FALSE, GetMenuIcon(IDI_HELP));
         CMenuIcon::AddIconToMenuItem(menu.GetSafeHmenu(), ID_APP_ABOUT, FALSE, GetMenuIcon(IDR_MAINFRAME));
         CMenuIcon::AddIconToMenuItem(menu.GetSafeHmenu(), ID_APP_EXIT, FALSE, GetMenuIcon(IDI_EXIT));
@@ -990,13 +943,13 @@ BOOL CTrafficMonitorApp::InitInstance()
 
 #ifdef _DEBUG
     m_config_dir = L".\\";
-    m_skin_path = L".\\skins";
+    m_skin_path = L".\\skins\\";
 #else
     if (m_general_data.portable_mode)
         m_config_dir = m_module_dir;
     else
         m_config_dir = m_appdata_dir;
-    m_skin_path = m_module_dir + L"skins";
+    m_skin_path = m_module_dir + L"skins\\";
 #endif
     //AppData里面的程序配置文件路径
     m_config_path = m_config_dir + L"config.ini";
@@ -1100,12 +1053,10 @@ BOOL CTrafficMonitorApp::InitInstance()
     //SetRegistryKey(_T("应用程序向导生成的本地应用程序"));        //暂不使用注册表保存数据
 
     //启动时检查更新
-#ifndef _DEBUG      //DEBUG下不在启动时检查更新
     if (m_general_data.check_update_when_start)
     {
         CheckUpdateInThread(false);
     }
-#endif // !_DEBUG
 
 #ifndef WITHOUT_TEMPERATURE
     //检测是否安装.net framework 4.5
@@ -1280,7 +1231,7 @@ bool CTrafficMonitorApp::IsTaksbarItemDisplayed(CommonDisplayItem item) const
     }
     else
     {
-        return m_taskbar_data.m_tbar_display_item & item.item_type;
+        return m_taskbar_data.display_item.Contains(item.item_type);
     }
     return false;
 }

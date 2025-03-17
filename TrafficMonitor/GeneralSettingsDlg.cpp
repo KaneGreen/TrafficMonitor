@@ -27,23 +27,22 @@ CGeneralSettingsDlg::~CGeneralSettingsDlg()
 void CGeneralSettingsDlg::CheckTaskbarDisplayItem()
 {
     //如果选项设置中关闭了某个硬件监控，则不显示对应的温度监控相关项目
-    int taskbar_displat_item_ori = theApp.m_taskbar_data.m_tbar_display_item;
     if (!theApp.m_general_data.IsHardwareEnable(HI_CPU))
     {
-        theApp.m_taskbar_data.m_tbar_display_item &= ~TDI_CPU_TEMP;
+        theApp.m_taskbar_data.display_item.Remove(TDI_CPU_TEMP);
     }
     if (!theApp.m_general_data.IsHardwareEnable(HI_GPU))
     {
-        theApp.m_taskbar_data.m_tbar_display_item &= ~TDI_GPU_USAGE;
-        theApp.m_taskbar_data.m_tbar_display_item &= ~TDI_GPU_TEMP;
+        theApp.m_taskbar_data.display_item.Remove(TDI_GPU_USAGE);
+        theApp.m_taskbar_data.display_item.Remove(TDI_GPU_TEMP);
     }
     if (!theApp.m_general_data.IsHardwareEnable(HI_HDD))
     {
-        theApp.m_taskbar_data.m_tbar_display_item &= ~TDI_HDD_TEMP;
-        theApp.m_taskbar_data.m_tbar_display_item &= ~TDI_HDD_USAGE;
+        theApp.m_taskbar_data.display_item.Remove(TDI_HDD_TEMP);
+        theApp.m_taskbar_data.display_item.Remove(TDI_HDD_USAGE);
     }
     if (!theApp.m_general_data.IsHardwareEnable(HI_MBD))
-        theApp.m_taskbar_data.m_tbar_display_item &= ~TDI_MAIN_BOARD_TEMP;
+        theApp.m_taskbar_data.display_item.Remove(TDI_MAIN_BOARD_TEMP);
 }
 
 void CGeneralSettingsDlg::SetControlMouseWheelEnable(bool enable)
@@ -203,6 +202,8 @@ void CGeneralSettingsDlg::SetControlEnable()
 
     m_hard_disk_combo.EnableWindow(m_data.IsHardwareEnable(HI_HDD));
     m_select_cpu_combo.EnableWindow(m_data.IsHardwareEnable(HI_CPU));
+
+    EnableDlgCtrl(IDC_SELECT_CONNECTIONS_BUTTON, !m_data.show_all_interface);
 }
 
 
@@ -210,8 +211,6 @@ BEGIN_MESSAGE_MAP(CGeneralSettingsDlg, CTabDlg)
     ON_BN_CLICKED(IDC_CHECK_NOW_BUTTON, &CGeneralSettingsDlg::OnBnClickedCheckNowButton)
     ON_BN_CLICKED(IDC_CHECK_UPDATE_CHECK, &CGeneralSettingsDlg::OnBnClickedCheckUpdateCheck)
     ON_BN_CLICKED(IDC_AUTO_RUN_CHECK, &CGeneralSettingsDlg::OnBnClickedAutoRunCheck)
-    ON_BN_CLICKED(IDC_ALLOW_SKIN_FONT_CHECK, &CGeneralSettingsDlg::OnBnClickedAllowSkinFontCheck)
-    ON_BN_CLICKED(IDC_ALLOW_SKIN_DISP_STR_CHECK, &CGeneralSettingsDlg::OnBnClickedAllowSkinDispStrCheck)
     ON_BN_CLICKED(IDC_TODAY_TRAFFIC_TIP_CHECK, &CGeneralSettingsDlg::OnBnClickedTodayTrafficTipCheck)
     ON_BN_CLICKED(IDC_MEMORY_USAGE_TIP_CHECK, &CGeneralSettingsDlg::OnBnClickedMemoryUsageTipCheck)
     ON_BN_CLICKED(IDC_OPEN_CONFIG_PATH_BUTTON, &CGeneralSettingsDlg::OnBnClickedOpenConfigPathButton)
@@ -252,8 +251,6 @@ BOOL CGeneralSettingsDlg::OnInitDialog()
     // TODO:  在此添加额外的初始化
 
     ((CButton*)GetDlgItem(IDC_CHECK_UPDATE_CHECK))->SetCheck(m_data.check_update_when_start);
-    ((CButton*)GetDlgItem(IDC_ALLOW_SKIN_FONT_CHECK))->SetCheck(m_data.allow_skin_cover_font);
-    ((CButton*)GetDlgItem(IDC_ALLOW_SKIN_DISP_STR_CHECK))->SetCheck(m_data.allow_skin_cover_text);
     if (theApp.IsForceShowNotifyIcon())
     {
         m_data.show_notify_icon = true;
@@ -443,20 +440,6 @@ void CGeneralSettingsDlg::OnBnClickedAutoRunCheck()
 }
 
 
-void CGeneralSettingsDlg::OnBnClickedAllowSkinFontCheck()
-{
-    // TODO: 在此添加控件通知处理程序代码
-    m_data.allow_skin_cover_font = (((CButton*)GetDlgItem(IDC_ALLOW_SKIN_FONT_CHECK))->GetCheck() != 0);
-}
-
-
-void CGeneralSettingsDlg::OnBnClickedAllowSkinDispStrCheck()
-{
-    // TODO: 在此添加控件通知处理程序代码
-    m_data.allow_skin_cover_text = (((CButton*)GetDlgItem(IDC_ALLOW_SKIN_DISP_STR_CHECK))->GetCheck() != 0);
-}
-
-
 void CGeneralSettingsDlg::OnOK()
 {
     // TODO: 在此添加专用代码和/或调用基类
@@ -515,7 +498,7 @@ void CGeneralSettingsDlg::OnOK()
         MessageBox(CCommon::LoadText(IDS_CFG_DIR_CHANGED_INFO), NULL, MB_ICONINFORMATION | MB_OK);
     }
 
-    //m_taskbar_item_modified = (theApp.m_taskbar_data.m_tbar_display_item != taskbar_displat_item_ori);
+    //m_taskbar_item_modified = (theApp.m_taskbar_data.display_item != taskbar_displat_item_ori);
 
     CTabDlg::OnOK();
 }
@@ -548,6 +531,7 @@ void CGeneralSettingsDlg::OnBnClickedShowAllConnectionCheck()
 {
     // TODO: 在此添加控件通知处理程序代码
     m_data.show_all_interface = (((CButton*)GetDlgItem(IDC_SHOW_ALL_CONNECTION_CHECK))->GetCheck() != 0);
+    SetControlEnable();
 }
 
 
