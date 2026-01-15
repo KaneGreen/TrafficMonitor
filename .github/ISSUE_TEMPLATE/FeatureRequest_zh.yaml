@@ -1,12 +1,13 @@
 name: 功能请求
 description: 请求一个新功能
-labels: ["enhancement"]
 body:
   - type: checkboxes
     attributes: 
       label: 前置条件
       options:
         - label: 已经在[issue](https://github.com/zhongyang219/TrafficMonitor/issues)列表中搜索了相关问题。
+          required: true
+        - label: 已经阅读了[wiki](https://github.com/zhongyang219/TrafficMonitor/wiki)页面并确保当前版本TrafficMonitor没有提供此功能。
           required: true
   - type: input
     attributes:

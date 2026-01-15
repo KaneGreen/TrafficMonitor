@@ -12,7 +12,6 @@
 #define IDD_SKIN_DIALOG                 138
 #define IDB_BITMAP1                     140
 #define IDD_HISTORY_TRAFFIC_DIALOG      141
-#define IDD_DONATE_DIALOG               143
 #define IDB_BITMAP2                     145
 #define IDB_DONATE_BITMAP               145
 #define IDI_NOFITY_ICON                 146
@@ -79,6 +78,7 @@
 #define IDD_WIN11_TASKBAR_SETTING_DLG   344
 #define IDR_LANGUAGE                    346
 #define IDR_LANGUAGE_DEFAULT            347
+#define IDR_DISPLAY_ITEM_CONTEXT_MENU   348
 #define IDS_PLUGIN_DETAILS              388
 #define IDC_STATIC_INFO                 1001
 #define IDC_STATIC1                     1002
@@ -224,7 +224,6 @@
 #define IDC_BROWSE_BUTTON               1100
 #define IDC_EXE_PATH_EDIT               1101
 #define IDC_EXE_PATH_STATIC             1102
-#define IDC_TEXT_STATIC                 1103
 #define IDC_CM_GRAPH_BAR_RADIO          1104
 #define IDC_CM_GRAPH_PLOT_RADIO         1105
 #define IDC_USE_CPU_TIME_RADIO          1106
@@ -462,13 +461,14 @@
 #define ID_PLUGIN_OPTIONS_TASKBAR       33407
 #define ID_PLUGIN_COMMAND_START         33408
 #define ID_PLUGIN_COMMAND_MAX           33664
+#define ID_RESTORE_DEFAULT              33665
 
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        348
-#define _APS_NEXT_COMMAND_VALUE         33665
+#define _APS_NEXT_RESOURCE_VALUE        349
+#define _APS_NEXT_COMMAND_VALUE         33666
 #define _APS_NEXT_CONTROL_VALUE         1220
 #define _APS_NEXT_SYMED_VALUE           101
 #endif

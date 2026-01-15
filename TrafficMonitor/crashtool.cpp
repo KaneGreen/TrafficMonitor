@@ -115,6 +115,8 @@ public:
             pSymbol->SizeOfStruct = sizeof(SYMBOL_INFO);
             pSymbol->MaxNameLen = MAX_SYM_NAME;
 
+            stream << L"--------------------------------------\r\n";
+
             DWORD64 displacement = 0;
             if (SymFromAddr(GetCurrentProcess(), stackFrame.AddrPC.Offset, &displacement, pSymbol)) {
                 stream << L"Function: " << CCommon::AsciiToUnicode(pSymbol->Name) << L" (Displacement: " << displacement << L")\r\n";
@@ -140,10 +142,6 @@ public:
 
 	void ShowCrashInfo(EXCEPTION_POINTERS* pEP)
 	{
-		CMessageDlg dlg;
-		dlg.SetWindowTitle(APP_NAME);
-		dlg.SetInfoText(CCommon::LoadText(IDS_ERROR_MESSAGE));
-
 		CString info = CCommon::LoadTextFormat(IDS_CRASH_INFO, { m_dumpFile });
 		info += _T("\r\n");
         //在崩溃信息中调用堆栈
@@ -155,15 +153,17 @@ public:
             info += _T("\r\n");
         }
 		info += theApp.GetSystemInfoString();
-		dlg.SetMessageText(info);
-
-        //设置图标
-        HICON hIcon;
-        HRESULT hr = LoadIconWithScaleDown(NULL, IDI_ERROR, theApp.DPI(32), theApp.DPI(32), &hIcon);
-
-        if (SUCCEEDED(hr))
-            dlg.SetMessageIcon(hIcon);
-
+        //写入日志
+        CString crash_log = info;
+        crash_log.Replace(_T("\r\n"), _T("\n"));
+        crash_log.Replace(_T("\n\n"), _T("\n"));
+        CCommon::WriteLog(crash_log.GetString(), theApp.m_log_path.c_str());
+        //显示崩溃对话框
+        CMessageDlg dlg;
+        dlg.SetWindowTitle(APP_NAME);
+        dlg.SetInfoText(CCommon::LoadText(IDS_ERROR_MESSAGE));
+        dlg.SetMessageText(info);
+        dlg.SetStandarnMessageIcon(CMessageDlg::SI_ERROR);
         dlg.DoModal();
 	}
 

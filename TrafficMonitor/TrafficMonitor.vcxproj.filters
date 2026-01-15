@@ -30,9 +30,6 @@
     <Filter Include="源文件和头文件\stdafx">
       <UniqueIdentifier>{ee6e7f72-a080-4020-92ff-432b8dcdad2f}</UniqueIdentifier>
     </Filter>
-    <Filter Include="源文件和头文件\对话框类\DonateDlg">
-      <UniqueIdentifier>{9085ed32-5818-45d1-836b-bae3c63952d0}</UniqueIdentifier>
-    </Filter>
     <Filter Include="源文件和头文件\对话框类\选项设置对话框">
       <UniqueIdentifier>{98909116-8f3b-47d0-8e3f-ef90b29a2acc}</UniqueIdentifier>
     </Filter>
@@ -250,6 +247,9 @@
     <Filter Include="源文件和头文件\公共的类\PluginUpdateHelper">
       <UniqueIdentifier>{4d4d9bb2-17eb-4f13-978b-c204a1b227db}</UniqueIdentifier>
     </Filter>
+    <Filter Include="源文件和头文件\公共的类\DisplayItem">
+      <UniqueIdentifier>{4785624f-2ca9-4f92-8cfc-c7a7c3bfba74}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <Text Include="ReadMe.txt" />
@@ -282,9 +282,6 @@
     </ClInclude>
     <ClInclude Include="stdafx.h">
       <Filter>源文件和头文件\stdafx</Filter>
-    </ClInclude>
-    <ClInclude Include="DonateDlg.h">
-      <Filter>源文件和头文件\对话框类\DonateDlg</Filter>
     </ClInclude>
     <ClInclude Include="MainWndSettingsDlg.h">
       <Filter>源文件和头文件\对话框类\选项设置对话框</Filter>
@@ -544,11 +541,14 @@
     <ClInclude Include="SettingsHelper.h">
       <Filter>源文件和头文件\公共的类\IniHelper</Filter>
     </ClInclude>
-    <ClInclude Include="DisplayItem.h">
-      <Filter>源文件和头文件\公共的类\CommonData</Filter>
-    </ClInclude>
     <ClInclude Include="PluginUpdateHelper.h">
       <Filter>源文件和头文件\公共的类\PluginUpdateHelper</Filter>
+    </ClInclude>
+    <ClInclude Include="DisplayItem.h">
+      <Filter>源文件和头文件\公共的类\DisplayItem</Filter>
+    </ClInclude>
+    <ClInclude Include="WineTaskbarDlg.h">
+      <Filter>源文件和头文件\TaskBarDlg</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -566,9 +566,6 @@
     </ClCompile>
     <ClCompile Include="stdafx.cpp">
       <Filter>源文件和头文件\stdafx</Filter>
-    </ClCompile>
-    <ClCompile Include="DonateDlg.cpp">
-      <Filter>源文件和头文件\对话框类\DonateDlg</Filter>
     </ClCompile>
     <ClCompile Include="GeneralSettingsDlg.cpp">
       <Filter>源文件和头文件\对话框类\选项设置对话框</Filter>
@@ -810,11 +807,14 @@
     <ClCompile Include="SettingsHelper.cpp">
       <Filter>源文件和头文件\公共的类\IniHelper</Filter>
     </ClCompile>
-    <ClCompile Include="DisplayItem.cpp">
-      <Filter>源文件和头文件\公共的类\CommonData</Filter>
-    </ClCompile>
     <ClCompile Include="PluginUpdateHelper.cpp">
       <Filter>源文件和头文件\公共的类\PluginUpdateHelper</Filter>
+    </ClCompile>
+    <ClCompile Include="DisplayItem.cpp">
+      <Filter>源文件和头文件\公共的类\DisplayItem</Filter>
+    </ClCompile>
+    <ClCompile Include="WineTaskbarDlg.cpp">
+      <Filter>源文件和头文件\TaskBarDlg</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -924,12 +924,6 @@
       <Filter>资源文件\bitmaps</Filter>
     </Image>
     <Image Include="res\bitmap3.bmp">
-      <Filter>资源文件\bitmaps</Filter>
-    </Image>
-    <Image Include="res\donate.bmp">
-      <Filter>资源文件\bitmaps</Filter>
-    </Image>
-    <Image Include="res\donate_wechart.bmp">
       <Filter>资源文件\bitmaps</Filter>
     </Image>
     <Image Include="res\notify_preview.bmp">
