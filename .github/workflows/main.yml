@@ -12,27 +12,27 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v4
-      
+      uses: actions/checkout@v6
+
     - name: Add msbuild to PATH
-      uses: microsoft/setup-msbuild@v2
+      uses: microsoft/setup-msbuild@v3
       with:
         msbuild-architecture: x64
-      
+
     - name: Run msbuild
       shell: cmd
       run: |
         chcp 65001
-        MSBuild -p:Configuration="Release (lite)" -p:Platform=x64 -p:PlatformToolset=v143
-      
+        MSBuild TrafficMonitor_Lite.sln -p:Configuration="Release (lite)" -p:Platform=x64 -p:PlatformToolset=v143
+
     - name: Get current time
       shell: bash
       run: echo "BUILDDATETIME=$(date '+%Y%m%d%H%M')" >> $GITHUB_ENV
-      
+
     - name: Upload artifact
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
-        name: TrafficMonitor_Lite_x64_${{ env.BUILDDATETIME }}
+        name: x64_${{ env.BUILDDATETIME }}_TrafficMonitor
         path: |
           Bin/x64/Release (lite)/TrafficMonitor.exe
           Bin/x64/Release (lite)/*.dll
